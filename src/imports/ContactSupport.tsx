@@ -22,7 +22,7 @@ export default function ContactSupport({ onBack, onReportIssue }: ContactSupport
   return (
     <div className="w-full flex-1 flex flex-col min-h-full bg-transparent relative pb-12 transition-colors">
       {/* Top Header */}
-      <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-white/5 sticky top-0 bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-sm z-10">
+      <div className="px-4 sm:px-6 py-3.5 flex items-center justify-between border-b border-gray-100 dark:border-white/5 sticky top-0 bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-sm z-10">
         <button
           onClick={onBack}
           className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/5 text-gray-800 dark:text-white transition-colors cursor-pointer"
@@ -34,10 +34,10 @@ export default function ContactSupport({ onBack, onReportIssue }: ContactSupport
         <div className="w-10" />
       </div>
 
-      <div className="flex-1 px-6 sm:px-10 py-6 max-w-xl mx-auto w-full flex flex-col gap-6">
+      <div className="flex-1 px-3.5 sm:px-8 py-5 sm:py-6 max-w-xl mx-auto w-full flex flex-col gap-6">
         {/* Top Notice Banner */}
         <div className="bg-[#FFF8E7] dark:bg-amber-400/10 border border-[#FFE7A3] dark:border-amber-400/20 rounded-2xl p-4 sm:p-5 flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-full bg-amber-400/20 dark:bg-amber-400/20 flex items-center justify-center text-amber-700 dark:text-amber-400 shrink-0">
+          <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center text-black shrink-0 shadow-2xs">
             <Headphones className="w-5 h-5" />
           </div>
           <div className="flex flex-col">

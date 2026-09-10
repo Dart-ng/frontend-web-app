@@ -14,8 +14,17 @@ import {
   Send,
   Maximize2,
   X,
+  Shirt,
+  Truck,
+  Calendar,
+  Clock,
+  MapPin,
 } from "lucide-react";
 import shoeImage from "../assets/nike_air_max_shoe.jpg";
+import ConfettiBackground from "../components/ConfettiBackground";
+import greenSuccessBadge from "../assets/good-mark.svg";
+import linkedBoxSvg from "../assets/Linked-box.svg";
+import PackageStateIcon from "../components/PackageStateIcon";
 
 export interface DeliveryDetailsItem {
   id?: string;
@@ -39,6 +48,13 @@ export interface DeliveryDetailsItem {
     price: string;
     isSaved?: boolean;
   };
+  isInbound?: boolean;
+  courier?: string;
+  shippedDate?: string;
+  estimatedArrival?: string;
+  isArrived?: boolean;
+  arrivedDate?: string;
+  pickupTerminal?: string;
 }
 
 interface DeliveryDetailsProps {
@@ -54,6 +70,292 @@ export default function DeliveryDetails({
   onOpenNotifications,
   onBookRiderAgain,
 }: DeliveryDetailsProps) {
+  // Inbound arrival state toggle (defaults to delivery status)
+  const [inboundArrivedState, setInboundArrivedState] = useState<boolean>(
+    Boolean(delivery?.isArrived || delivery?.status === "Delivered" || delivery?.status === "Ready for pickup")
+  );
+
+  // If this is an inbound package:
+  if (delivery?.isInbound) {
+    // ----------------------------------------------------
+    // SCREEN: PACKAGE HAS ARRIVED & READY FOR PICKUP
+    // ----------------------------------------------------
+    if (inboundArrivedState) {
+      return (
+        <div className="w-full flex-1 flex flex-col min-h-screen bg-white dark:bg-[#0c0c0e] relative select-none overflow-hidden animate-in fade-in duration-300">
+          {/* Celebration Confetti in upper half (Hardcoded Static SVG) */}
+          <div className="absolute top-0 left-0 right-0 h-72 sm:h-80 pointer-events-none overflow-hidden z-0 flex justify-center opacity-95">
+            <ConfettiBackground />
+          </div>
+
+          {/* Top header navigation */}
+          <div className="w-full max-w-xl mx-auto px-4 sm:px-6 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-2 flex items-center justify-between relative z-20">
+            <button
+              onClick={onBack}
+              className="w-10 h-10 -ml-2 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-800 dark:text-white transition-colors cursor-pointer"
+              title="Go back"
+            >
+              <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
+            </button>
+
+            {/* State Toggle for demo */}
+            <button
+              type="button"
+              onClick={() => setInboundArrivedState(false)}
+              className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-yellow-400/20 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-400/30 transition-colors cursor-pointer"
+              title="Preview In-Transit state"
+            >
+              View In-Transit
+            </button>
+          </div>
+
+          {/* Content Body */}
+          <div className="w-full max-w-xl mx-auto px-4 sm:px-6 pb-8 flex-1 flex flex-col items-center justify-between relative z-10">
+            <div className="w-full flex flex-col items-center">
+              {/* Green Success Scalloped Starburst Badge */}
+              <div className="relative w-36 h-36 sm:w-40 sm:h-40 flex items-center justify-center mt-2 sm:mt-6">
+                <img
+                  src={greenSuccessBadge}
+                  alt="Package Arrived"
+                  className="w-28 h-28 sm:w-32 sm:h-32 object-contain drop-shadow-md animate-in zoom-in-95 duration-300"
+                />
+              </div>
+
+              {/* Headings */}
+              <h1 className="text-2xl sm:text-[28px] font-bold text-gray-900 dark:text-white tracking-tight mt-6 text-center">
+                Your package has arrived 🎉
+              </h1>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-2 text-center max-w-xs leading-relaxed">
+                Your package is ready for pickup at {delivery.pickupTerminal || "GIG Terminal, Auchi, Edo state"}
+              </p>
+
+              {/* Package Pickup Details Card */}
+              <div className="w-full bg-white dark:bg-[#18181b] border border-gray-100 dark:border-white/10 rounded-2xl p-4 sm:p-5 shadow-xs divide-y divide-gray-100 dark:divide-white/5 mt-6 text-left">
+                <div className="pb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white">
+                      {delivery.title || "Black Hoodie XXL"}
+                    </h3>
+                    <span className="text-[10px] font-bold text-yellow-700 dark:text-yellow-400 bg-yellow-400/20 px-2 py-0.5 rounded uppercase tracking-wider mt-1 inline-block">
+                      READY FOR PICKUP
+                    </span>
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-yellow-50 dark:bg-white/5 border border-yellow-100 dark:border-white/10 shrink-0 flex items-center justify-center p-1">
+                    <PackageStateIcon status="Ready for pickup" className="w-full h-full object-contain" />
+                  </div>
+                </div>
+                <div className="py-3">
+                  <p className="font-mono text-xs sm:text-sm text-gray-400 dark:text-gray-500">
+                    ID: {delivery.trackingCode || "NGS213-2324-23243"}
+                  </p>
+                </div>
+                <div className="pt-3">
+                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                    Arrived on: {delivery.arrivedDate || "Jul 30th 2026 • 12:47 PM"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="w-full flex flex-col gap-3 pt-6 mt-6">
+              <button
+                type="button"
+                onClick={() => {
+                  if (onBookRiderAgain) {
+                    onBookRiderAgain();
+                  } else {
+                    onBack();
+                  }
+                }}
+                className="w-full py-4 rounded-2xl bg-yellow-400 hover:bg-yellow-500 active:scale-[0.99] text-black font-bold text-base transition-all shadow-sm flex items-center justify-center cursor-pointer touch-manipulation"
+              >
+                Book a Rider Now
+              </button>
+              <button
+                type="button"
+                onClick={onBack}
+                className="w-full py-4 rounded-2xl bg-gray-100 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10 active:scale-[0.99] text-gray-900 dark:text-white font-semibold text-base transition-colors cursor-pointer touch-manipulation text-center"
+              >
+                Not Now
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ----------------------------------------------------
+    // SCREEN: IN-TRANSIT 4-STOP ROUTE STEPPER SCREEN
+    // ----------------------------------------------------
+    return (
+      <div className="w-full flex-1 flex flex-col min-h-full bg-[#fcfcfc] dark:bg-[#0c0c0e] pb-12 transition-colors animate-in fade-in duration-200">
+        {/* Top Header */}
+        <div className="w-full max-w-xl mx-auto px-4 sm:px-6 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-3 flex items-center justify-between sticky top-0 z-20 bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-md">
+          <button
+            onClick={onBack}
+            className="w-10 h-10 -ml-2 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-800 dark:text-white transition-colors cursor-pointer"
+            title="Go back"
+          >
+            <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
+          </button>
+
+          {/* Quick toggle to arrived preview */}
+          <button
+            type="button"
+            onClick={() => setInboundArrivedState(true)}
+            className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 transition-colors cursor-pointer"
+            title="Preview package arrived state"
+          >
+            Mark as Arrived
+          </button>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="w-full max-w-xl mx-auto px-4 sm:px-6 flex flex-col gap-4 sm:gap-5 flex-1">
+          {/* Header Title */}
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+              Package details
+            </h1>
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Review the details before adding to your packages.
+            </p>
+          </div>
+
+          {/* Card 1: Item & Category Summary */}
+          <div className="bg-white dark:bg-[#18181b] border border-gray-100 dark:border-white/5 rounded-2xl p-4 sm:p-5 shadow-xs flex items-center gap-4">
+            {/* Inbound Package Details Icon */}
+            <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl bg-yellow-50 dark:bg-white/5 border border-yellow-100 dark:border-white/5 flex items-center justify-center shrink-0 p-2.5">
+              <img
+                src={linkedBoxSvg}
+                alt="Inbound package details"
+                className="w-full h-full object-contain"
+              />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              {/* Category Ticker in Complete Dart Yellow with Black Text */}
+              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-yellow-400 text-black text-[11px] font-bold uppercase tracking-wider mb-1.5 shadow-2xs">
+                <Shirt className="w-3.5 h-3.5 stroke-[2.2]" />
+                <span>{delivery.category || "CLOTHES"}</span>
+              </div>
+              <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white truncate">
+                {delivery.title || "Black Hoodie XXL"}
+              </h3>
+              <p className="font-mono text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">
+                {delivery.trackingCode || "NGS213-2324-23243"}
+              </p>
+            </div>
+          </div>
+
+          {/* Card 2: Courier Shipping Metadata */}
+          <div className="bg-white dark:bg-[#18181b] border border-gray-100 dark:border-white/5 rounded-2xl divide-y divide-gray-100 dark:divide-white/5 shadow-xs overflow-hidden">
+            {/* Courier */}
+            <div className="flex items-center justify-between p-4 sm:p-4.5">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-600 dark:text-gray-300 shrink-0">
+                  <Truck className="w-4.5 h-4.5" />
+                </div>
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Courier</span>
+              </div>
+              <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                {delivery.courier || "AliExpress"}
+              </span>
+            </div>
+
+            {/* Shipped on */}
+            <div className="flex items-center justify-between p-4 sm:p-4.5">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-600 dark:text-gray-300 shrink-0">
+                  <Calendar className="w-4.5 h-4.5" />
+                </div>
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Shipped on</span>
+              </div>
+              <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                {delivery.shippedDate || "Jun 28th 2026"}
+              </span>
+            </div>
+
+            {/* Estimated Arrival */}
+            <div className="flex items-center justify-between p-4 sm:p-4.5">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-600 dark:text-gray-300 shrink-0">
+                  <Clock className="w-4.5 h-4.5" />
+                </div>
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Estimated Arrival</span>
+              </div>
+              <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                {delivery.estimatedArrival || "Jul 30th 2026"}
+              </span>
+            </div>
+          </div>
+
+          {/* Card 3: 4-Stop Tracking Route Stepper */}
+          <div className="bg-white dark:bg-[#18181b] border border-gray-100 dark:border-white/5 rounded-2xl p-4 sm:p-5 shadow-xs mb-8">
+            <div className="flex flex-col gap-6 relative">
+              {/* Connecting Vertical Dashed Line */}
+              <div className="absolute left-2.5 top-3.5 bottom-3.5 w-px border-l-2 border-dashed border-gray-300 dark:border-gray-700 -translate-x-1/2" />
+
+              {/* Stop 1 */}
+              <div className="flex items-start gap-3.5 relative z-10">
+                <div className="w-5 h-5 rounded-full bg-yellow-400 border-2 border-yellow-500 dark:border-yellow-300 shrink-0 mt-0.5 shadow-2xs" />
+                <div className="min-w-0 flex-1">
+                  <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 block">
+                    INBOUND FROM
+                  </span>
+                  <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mt-0.5">
+                    {delivery.fromLocation || "China, Beijing"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Stop 2 */}
+              <div className="flex items-start gap-3.5 relative z-10">
+                <div className="w-5 h-5 rounded-full bg-yellow-400 border-2 border-yellow-500 dark:border-yellow-300 shrink-0 mt-0.5 shadow-2xs" />
+                <div className="min-w-0 flex-1">
+                  <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 block">
+                    DROP-OFF LOCATION
+                  </span>
+                  <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mt-0.5">
+                    Akpakpava, Benin
+                  </p>
+                </div>
+              </div>
+
+              {/* Stop 3 */}
+              <div className="flex items-start gap-3.5 relative z-10">
+                <div className="w-5 h-5 rounded-full bg-yellow-400 border-2 border-yellow-500 dark:border-yellow-300 shrink-0 mt-0.5 shadow-2xs" />
+                <div className="min-w-0 flex-1">
+                  <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 block">
+                    DROP-OFF LOCATION
+                  </span>
+                  <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mt-0.5">
+                    Akpakpava, Benin
+                  </p>
+                </div>
+              </div>
+
+              {/* Stop 4 (Destination with Red Map Pin) */}
+              <div className="flex items-start gap-3.5 relative z-10">
+                <div className="w-5 h-5 flex items-center justify-center text-red-500 shrink-0 mt-0.5">
+                  <MapPin className="w-5 h-5 fill-red-500/20 stroke-red-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 block">
+                    DROP-OFF LOCATION
+                  </span>
+                  <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mt-0.5">
+                    {delivery.toLocation || "Akpakpava, Benin"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isBookmarked, setIsBookmarked] = useState<boolean>(delivery?.rider?.isSaved || false);
   const [isBooked, setIsBooked] = useState<boolean>(false);
@@ -396,17 +698,20 @@ export default function DeliveryDetails({
           </div>
 
           <div className="flex flex-col min-w-0 flex-1">
-            <span
-              className={`text-[10px] sm:text-xs font-bold px-2.5 py-0.5 rounded-md uppercase tracking-wider w-fit mb-1 ${
-                item.status === "Delivered"
-                  ? "text-emerald-700 dark:text-emerald-400 bg-emerald-100/70 dark:bg-emerald-400/15"
-                  : item.status === "Cancelled"
-                  ? "text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-400/15"
-                  : "text-amber-700 dark:text-amber-400 bg-amber-100/70 dark:bg-amber-400/15"
-              }`}
-            >
-              {item.status}
-            </span>
+            <div className="flex items-center gap-2 mb-1">
+              <PackageStateIcon status={item.status} className="w-5 h-5 object-contain" />
+              <span
+                className={`text-[10px] sm:text-xs font-bold px-2.5 py-0.5 rounded-md uppercase tracking-wider w-fit ${
+                  item.status === "Delivered"
+                    ? "text-emerald-700 dark:text-emerald-400 bg-emerald-100/70 dark:bg-emerald-400/15"
+                    : item.status === "Cancelled"
+                    ? "text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-400/15"
+                    : "text-black bg-yellow-400 font-bold"
+                }`}
+              >
+                {item.status}
+              </span>
+            </div>
 
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white truncate">
               {item.title}

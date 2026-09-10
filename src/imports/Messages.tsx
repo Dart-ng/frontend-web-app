@@ -105,15 +105,15 @@ export default function Messages() {
       <div className="w-full max-w-4xl 2xl:max-w-5xl mx-auto flex flex-col min-h-full bg-transparent border-0 md:border-x border-gray-200/70 dark:border-white/5 relative pb-24 md:pb-12 transition-colors">
         
         {/* Header */}
-        <div className="px-5 sm:px-6 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-3 sm:pb-4 flex items-center justify-between bg-white dark:bg-[#161618] sticky top-0 z-10 border-b border-gray-100 dark:border-white/5">
+        <div className="px-4 sm:px-6 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-3 sm:pb-4 flex items-center justify-between bg-white dark:bg-[#161618] sticky top-0 z-10 border-b border-gray-100 dark:border-white/5">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Messages</h1>
-          <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-yellow-400/20 hover:bg-yellow-400/30 text-yellow-600 dark:text-yellow-400 transition-colors">
-            <Edit className="w-5 h-5" />
+          <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-yellow-400 hover:bg-yellow-500 text-black shadow-xs transition-colors cursor-pointer">
+            <Edit className="w-5 h-5 stroke-[2.2]" />
           </button>
         </div>
 
         {/* Search */}
-        <div className="px-6 my-4">
+        <div className="px-3.5 sm:px-6 my-3 sm:my-4">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-gray-400" />
@@ -127,7 +127,7 @@ export default function Messages() {
         </div>
 
         {/* Tabs */}
-        <div className="px-6 mb-6 flex gap-2 overflow-x-auto hide-scrollbar">
+        <div className="px-3.5 sm:px-6 mb-4 sm:mb-6 flex gap-2 overflow-x-auto hide-scrollbar">
           {(["All", "Conversation", "Updates", "Supports"] as Tab[]).map((tab) => (
             <button
               key={tab}
@@ -144,7 +144,7 @@ export default function Messages() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 px-6 pb-6">
+        <div className="flex-1 px-3.5 sm:px-6 pb-6">
           
           <h2 className="text-sm font-semibold mb-4 text-gray-500 dark:text-gray-400">Updates</h2>
           
@@ -156,7 +156,7 @@ export default function Messages() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                     <span className="text-[10px] font-bold bg-yellow-400/20 text-yellow-700 dark:text-yellow-400 px-2 py-0.5 rounded uppercase">IN-TRANSIT</span>
+                     <span className="text-[10px] font-bold bg-yellow-400 text-black px-2 py-0.5 rounded uppercase shadow-2xs">IN-TRANSIT</span>
                   </div>
                   <h3 className="font-bold text-sm text-gray-900 dark:text-white">Google pixel 9pro</h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400">CTA 12mins • 1.2km away</p>

@@ -32,7 +32,7 @@ export default function ReportIssue({ onBack, onSubmitSuccess }: ReportIssueProp
   if (isSubmitted) {
     return (
       <div className="w-full flex-1 flex flex-col min-h-full bg-transparent relative pb-12 transition-colors">
-        <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-white/5 sticky top-0 bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-sm z-10">
+        <div className="px-4 sm:px-6 py-3.5 flex items-center justify-between border-b border-gray-100 dark:border-white/5 sticky top-0 bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-sm z-10">
           <button
             onClick={onBack}
             className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/5 text-gray-800 dark:text-white transition-colors cursor-pointer"
@@ -44,7 +44,7 @@ export default function ReportIssue({ onBack, onSubmitSuccess }: ReportIssueProp
           <div className="w-10" />
         </div>
 
-        <div className="flex-1 px-6 sm:px-10 py-12 max-w-xl mx-auto w-full flex flex-col items-center justify-center text-center">
+        <div className="flex-1 px-3.5 sm:px-8 py-8 sm:py-12 max-w-xl mx-auto w-full flex flex-col items-center justify-center text-center">
           <div className="w-20 h-20 bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mb-6 animate-in zoom-in-50 duration-300">
             <CheckCircle2 className="w-10 h-10" />
           </div>
@@ -66,7 +66,7 @@ export default function ReportIssue({ onBack, onSubmitSuccess }: ReportIssueProp
   return (
     <div className="w-full flex-1 flex flex-col min-h-full bg-transparent relative pb-12 transition-colors">
       {/* Top Header */}
-      <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-white/5 sticky top-0 bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-sm z-10">
+      <div className="px-4 sm:px-6 py-3.5 flex items-center justify-between border-b border-gray-100 dark:border-white/5 sticky top-0 bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-sm z-10">
         <button
           onClick={onBack}
           className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/5 text-gray-800 dark:text-white transition-colors cursor-pointer"
@@ -78,7 +78,7 @@ export default function ReportIssue({ onBack, onSubmitSuccess }: ReportIssueProp
         <div className="w-10" />
       </div>
 
-      <form onSubmit={handleSubmit} className="flex-1 px-6 sm:px-10 py-6 max-w-xl mx-auto w-full flex flex-col gap-6">
+      <form onSubmit={handleSubmit} className="flex-1 px-3.5 sm:px-8 py-5 sm:py-6 max-w-xl mx-auto w-full flex flex-col gap-6">
         {/* Section: Category Selection */}
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white leading-snug">

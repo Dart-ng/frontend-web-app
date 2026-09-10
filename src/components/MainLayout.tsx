@@ -13,8 +13,16 @@ type Tab = "home" | "packages" | "wallet" | "messages" | "account";
 
 export default function MainLayout() {
   const [activeTab, setActiveTab] = useState<Tab>("home");
+  const [inPackageProcedure, setInPackageProcedure] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const { resolvedTheme, toggleTheme } = useTheme();
+
+  // Bottom navigation visibility on mobile screens:
+  // Visible ONLY on Home (idle), Packages (idle), and Messages screens.
+  // Hidden during package procedure screens (SendPackage, RequestPickup, DeliveryDetails) or subpages.
+  const isBottomNavVisible =
+    !inPackageProcedure &&
+    (activeTab === "home" || activeTab === "packages" || activeTab === "messages");
 
   return (
     <div className="flex h-[100dvh] max-h-[100dvh] bg-[#fcfcfc] dark:bg-[#0c0c0e] flex-col md:flex-row w-full overflow-hidden relative transition-colors">
@@ -25,11 +33,11 @@ export default function MainLayout() {
       )}
       
       {/* Left Navigation (Sidebar on Desktop, Bottom Bar on Mobile) */}
-      <nav className="bg-white/95 dark:bg-[#161618]/95 backdrop-blur-md border-gray-200/70 dark:border-white/5 order-last md:order-first 
+      <nav className={`bg-white/95 dark:bg-[#161618]/95 backdrop-blur-md border-gray-200/70 dark:border-white/5 order-last md:order-first 
                       border-t md:border-t-0 md:border-r 
                       px-2 sm:px-6 py-1.5 pb-[max(0.6rem,env(safe-area-inset-bottom,0px))] md:px-4 md:py-8
-                      flex md:flex-col justify-around md:justify-start gap-0.5 md:gap-2
-                      w-full md:w-64 z-40 shrink-0 transition-colors shadow-[0_-4px_20px_rgba(0,0,0,0.04)] dark:shadow-none">
+                      ${isBottomNavVisible ? "flex" : "hidden md:flex"} md:flex-col justify-around md:justify-start gap-0.5 md:gap-2
+                      w-full md:w-64 z-40 shrink-0 transition-colors shadow-[0_-4px_20px_rgba(0,0,0,0.04)] dark:shadow-none`}>
         
         {/* Dart Brand Logo for Desktop */}
         <div className="hidden md:block mb-8 px-2">
@@ -128,12 +136,25 @@ export default function MainLayout() {
           <HomeScreen 
             onOpenNotifications={() => setShowNotifications(true)} 
             onNavigateToPackages={() => setActiveTab("packages")} 
+            onProcedureChange={setInPackageProcedure}
           />
         )}
-        {activeTab === "packages" && <PackagesScreen />}
-        {activeTab === "wallet" && <WalletScreen />}
+        {activeTab === "packages" && (
+          <PackagesScreen 
+            onOpenNotifications={() => setShowNotifications(true)}
+            onProcedureChange={setInPackageProcedure}
+          />
+        )}
+        {activeTab === "wallet" && (
+          <WalletScreen onBack={() => setActiveTab("home")} />
+        )}
         {activeTab === "messages" && <MessagesScreen />}
-        {activeTab === "account" && <AccountScreen onOpenNotifications={() => setShowNotifications(true)} />}
+        {activeTab === "account" && (
+          <AccountScreen 
+            onOpenNotifications={() => setShowNotifications(true)} 
+            onBack={() => setActiveTab("home")}
+          />
+        )}
       </main>
 
       {/* Right Sidebar: Notifications Panel on Desktop (Replaces old Dashboard) */}

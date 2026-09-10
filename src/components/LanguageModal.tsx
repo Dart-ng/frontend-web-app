@@ -109,7 +109,7 @@ export default function LanguageModal({
                     {lang.name}
                   </span>
                   {lang.isDefault && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#f5a623] dark:bg-amber-400 text-black uppercase tracking-wider">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-400 text-black uppercase tracking-wider shadow-2xs">
                       Default
                     </span>
                   )}
@@ -117,7 +117,7 @@ export default function LanguageModal({
 
                 {/* Selection Radio / Check Indicator */}
                 {isSelected ? (
-                  <div className="w-5 h-5 rounded-full bg-[#f5a623] dark:bg-amber-400 flex items-center justify-center text-white dark:text-black shadow-xs shrink-0 animate-in zoom-in-75 duration-150">
+                  <div className="w-5 h-5 rounded-full bg-yellow-400 flex items-center justify-center text-black shadow-xs shrink-0 animate-in zoom-in-75 duration-150">
                     <Check className="w-3.5 h-3.5 stroke-[3]" />
                   </div>
                 ) : (

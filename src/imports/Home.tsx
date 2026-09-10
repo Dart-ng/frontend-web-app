@@ -1,22 +1,69 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Bell, ScanLine, Send, Download, ArrowRight, ChevronRight, Package, Clock } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import ReceivePackageModal from "../components/ReceivePackageModal";
-import SendPackageModal from "../components/SendPackageModal";
+import SendPackageModal from "./../components/SendPackageModal";
 import SendPackageFlow from "../components/SendPackageFlow";
 import DeliveryDetails, { DeliveryDetailsItem } from "./DeliveryDetails";
+import LinkInboundFlow from "../components/LinkInboundFlow";
+import PackageStateIcon from "../components/PackageStateIcon";
 
 interface DeliveryItem {
   id: string;
   title: string;
   store: string;
   date: string;
-  status: "Delivered" | "Cancelled";
+  status: "Delivered" | "Cancelled" | "In-Transit" | "Ready for pickup";
   trackingId: string;
   type: "my" | "linked";
+  isInbound?: boolean;
+  courier?: string;
+  shippedDate?: string;
+  estimatedArrival?: string;
+  category?: string;
+  fromLocation?: string;
+  toLocation?: string;
+  isArrived?: boolean;
+  arrivedDate?: string;
+  pickupTerminal?: string;
 }
 
 const DELIVERIES_DATA: DeliveryItem[] = [
+  {
+    id: "inbound-home-1",
+    title: "Black Hoodie XXL",
+    store: "AliExpress",
+    date: "Jun 28th 2026",
+    status: "In-Transit",
+    trackingId: "NGS213-2324-23243",
+    type: "linked",
+    isInbound: true,
+    courier: "AliExpress",
+    shippedDate: "Jun 28th 2026",
+    estimatedArrival: "Jul 30th 2026",
+    category: "CLOTHES",
+    fromLocation: "China, Beijing",
+    toLocation: "Akpakpava, Benin",
+  },
+  {
+    id: "inbound-home-2",
+    title: "Black Hoodie XXL",
+    store: "AliExpress",
+    date: "Jul 30th 12:47 PM",
+    status: "Ready for pickup",
+    trackingId: "NGS213-2324-23243",
+    type: "linked",
+    isInbound: true,
+    isArrived: true,
+    courier: "AliExpress",
+    shippedDate: "Jun 28th 2026",
+    estimatedArrival: "Jul 30th 2026",
+    arrivedDate: "Jul 30th 2026 • 12:47 PM",
+    pickupTerminal: "GIG Terminal, Auchi, Edo state",
+    category: "CLOTHES",
+    fromLocation: "China, Beijing",
+    toLocation: "GIG Terminal, Auchi, Edo state",
+  },
   {
     id: "1",
     title: "Nike Air Max shoe",
@@ -93,21 +140,52 @@ const DELIVERIES_DATA: DeliveryItem[] = [
 
 export default function Home({ 
   onOpenNotifications,
-  onNavigateToPackages
+  onNavigateToPackages,
+  onProcedureChange,
+  onNavigateToAccount,
 }: { 
   onOpenNotifications?: () => void;
   onNavigateToPackages?: () => void;
+  onProcedureChange?: (inProcedure: boolean) => void;
+  onNavigateToAccount?: () => void;
 }) {
   const { resolvedTheme } = useTheme();
   const [isSendModalOpen, setIsSendModalOpen] = useState(false);
   const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
+  const [isLinkingInbound, setIsLinkingInbound] = useState(false);
   const [deliveryTab, setDeliveryTab] = useState<"my" | "linked">("my");
+  const [deliveries, setDeliveries] = useState<DeliveryItem[]>(DELIVERIES_DATA);
   const [selectedDelivery, setSelectedDelivery] = useState<DeliveryDetailsItem | null>(null);
   const [isSendingPackage, setIsSendingPackage] = useState(false);
+  const [isRequestingPickup, setIsRequestingPickup] = useState(false);
+  const [isViewingPackageStatus, setIsViewingPackageStatus] = useState(false);
   const [sendPackagePhoto, setSendPackagePhoto] = useState<{
     file?: File;
     previewUrl: string;
   } | null>(null);
+
+  useEffect(() => {
+    const inProcedure = isSendingPackage || isRequestingPickup || isLinkingInbound || isViewingPackageStatus || selectedDelivery !== null;
+    onProcedureChange?.(inProcedure);
+    return () => {
+      onProcedureChange?.(false);
+    };
+  }, [isSendingPackage, isRequestingPickup, isLinkingInbound, isViewingPackageStatus, selectedDelivery, onProcedureChange]);
+
+  if (isViewingPackageStatus) {
+    return (
+      <SendPackageFlow
+        mode="send"
+        initialScreen="package_status"
+        initialIsRiderAccepted={true}
+        onBack={() => setIsViewingPackageStatus(false)}
+        onComplete={() => {
+          setIsViewingPackageStatus(false);
+        }}
+        onOpenNotifications={onOpenNotifications}
+      />
+    );
+  }
 
   if (selectedDelivery) {
     return (
@@ -115,6 +193,39 @@ export default function Home({
         delivery={selectedDelivery}
         onBack={() => setSelectedDelivery(null)}
         onOpenNotifications={onOpenNotifications}
+        onBookRiderAgain={() => {
+          setSelectedDelivery(null);
+          setIsRequestingPickup(true);
+        }}
+      />
+    );
+  }
+
+  if (isLinkingInbound) {
+    return (
+      <LinkInboundFlow
+        onBack={() => setIsLinkingInbound(false)}
+        onComplete={(pkg) => {
+          const newInbound: DeliveryItem = {
+            id: pkg.id || "inbound-" + Date.now(),
+            title: pkg.title,
+            store: pkg.courier,
+            date: "Today",
+            status: pkg.status,
+            trackingId: pkg.trackingId,
+            type: "linked",
+            isInbound: true,
+            courier: pkg.courier,
+            shippedDate: pkg.shippedDate,
+            estimatedArrival: pkg.estimatedArrival,
+            category: pkg.category,
+            fromLocation: pkg.fromLocation,
+            toLocation: pkg.toLocation,
+          };
+          setDeliveries((prev) => [newInbound, ...prev]);
+          setDeliveryTab("linked");
+          setIsLinkingInbound(false);
+        }}
       />
     );
   }
@@ -122,6 +233,7 @@ export default function Home({
   if (isSendingPackage) {
     return (
       <SendPackageFlow
+        mode="send"
         initialImage={sendPackagePhoto}
         onBack={() => setIsSendingPackage(false)}
         onComplete={() => {
@@ -132,13 +244,26 @@ export default function Home({
     );
   }
 
-  const filteredDeliveries = DELIVERIES_DATA.filter((d) => d.type === deliveryTab);
+  if (isRequestingPickup) {
+    return (
+      <SendPackageFlow
+        mode="pickup"
+        onBack={() => setIsRequestingPickup(false)}
+        onComplete={() => {
+          setIsRequestingPickup(false);
+        }}
+        onOpenNotifications={onOpenNotifications}
+      />
+    );
+  }
+
+  const filteredDeliveries = deliveries.filter((d) => d.type === deliveryTab);
   return (
     <div className="w-full flex-1 flex flex-col min-h-full bg-transparent relative pb-24 md:pb-16 transition-colors">
         
         {/* Header Area: Matches Wallet header color & gradient exactly */}
         <div 
-          className="text-white dark:text-black px-5 sm:px-10 pt-[max(2rem,calc(env(safe-area-inset-top,0px)+1rem))] pb-7 sm:pb-8 rounded-b-[36px] sm:rounded-b-[40px] relative overflow-hidden shrink-0 transition-all shadow-sm"
+          className="text-white dark:text-black px-4 sm:px-10 pt-[max(1.75rem,calc(env(safe-area-inset-top,0px)+0.75rem))] pb-6 sm:pb-8 rounded-b-[30px] sm:rounded-b-[40px] relative overflow-hidden shrink-0 transition-all shadow-sm"
           style={{
             background: resolvedTheme === 'dark'
               ? 'linear-gradient(to bottom, #FFA600 0%, #FFCC00 100%)'
@@ -176,7 +301,7 @@ export default function Home({
           />
 
           <div className="relative z-10">
-            <div className="flex items-start justify-between mb-8">
+            <div className="flex items-start justify-between mb-6 sm:mb-8">
               <div>
                 <h1 className="text-xl sm:text-2xl font-medium mb-1 text-white dark:text-black">Good morning Hudeen 👋🏾</h1>
                 <p className="text-sm text-gray-400 dark:text-black/75">Auchi, Edo state</p>
@@ -189,7 +314,7 @@ export default function Home({
               </button>
             </div>
 
-            <h2 className="text-3xl sm:text-4xl font-semibold leading-tight mb-8 text-white dark:text-black">
+            <h2 className="text-2xl sm:text-4xl font-semibold leading-tight mb-6 sm:mb-8 text-white dark:text-black">
               What would you like to do Today?
             </h2>
 
@@ -207,28 +332,28 @@ export default function Home({
           </div>
         </div>
 
-        <div className="flex-1 px-6 sm:px-10 py-8 sm:py-9 flex flex-col gap-8 sm:gap-9">
+        <div className="flex-1 px-3.5 sm:px-8 md:px-10 py-5 sm:py-9 flex flex-col gap-6 sm:gap-9">
           
           {/* Action Buttons */}
-          <div className="grid grid-cols-2 gap-4 sm:gap-6">
+          <div className="grid grid-cols-2 gap-3 sm:gap-6">
             <button 
               onClick={() => setIsSendModalOpen(true)}
-              className="bg-white dark:bg-[#1c1c20] hover:bg-yellow-50/80 dark:hover:bg-yellow-400/10 border border-gray-100 dark:border-white/5 hover:border-yellow-300/80 dark:hover:border-yellow-400/30 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-3.5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group shadow-xs cursor-pointer touch-manipulation"
+              className="bg-white dark:bg-[#1c1c20] hover:bg-yellow-50/90 dark:hover:bg-yellow-400/10 border border-gray-100 dark:border-white/5 hover:border-yellow-400/60 dark:hover:border-yellow-400/40 rounded-2xl p-3 sm:p-5 flex items-center justify-start gap-2.5 sm:gap-3.5 hover:shadow-lg hover:shadow-yellow-500/10 hover:-translate-y-1 active:translate-y-0 active:scale-[0.96] active:bg-yellow-100/80 dark:active:bg-yellow-400/20 transition-all duration-200 ease-out active:duration-75 group shadow-xs cursor-pointer touch-manipulation text-left select-none"
             >
-              <div className="w-12 h-12 bg-gray-50 dark:bg-white/5 rounded-xl flex items-center justify-center border border-gray-100 dark:border-white/10 group-hover:bg-[#FFCC00] dark:group-hover:bg-[#FFCC00] group-hover:border-yellow-400/80 group-hover:scale-105 transition-all duration-200 shrink-0 shadow-2xs">
-                <Send className="w-5 h-5 text-gray-800 dark:text-gray-200 group-hover:text-gray-950 transition-colors" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#1a1a1a] dark:bg-[#FFCC00] rounded-xl flex items-center justify-center border border-black/10 dark:border-yellow-400/80 group-hover:scale-105 group-hover:rotate-[-3deg] group-active:scale-95 group-active:rotate-0 transition-all duration-200 shrink-0 shadow-2xs">
+                <Send className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-[#FFCC00] dark:text-[#141416] group-hover:translate-x-0.5 group-active:translate-x-0 transition-all" />
               </div>
-              <span className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base text-center sm:text-left leading-tight">Send<br/>Package</span>
+              <span className="font-semibold text-gray-900 dark:text-white group-hover:text-yellow-950 dark:group-hover:text-white text-xs sm:text-base text-left leading-tight transition-colors">Send<br/>Package</span>
             </button>
             
             <button 
               onClick={() => setIsReceiveModalOpen(true)}
-              className="bg-white dark:bg-[#1c1c20] hover:bg-yellow-50/80 dark:hover:bg-yellow-400/10 border border-gray-100 dark:border-white/5 hover:border-yellow-300/80 dark:hover:border-yellow-400/30 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-3.5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group shadow-xs cursor-pointer touch-manipulation"
+              className="bg-white dark:bg-[#1c1c20] hover:bg-yellow-50/90 dark:hover:bg-yellow-400/10 border border-gray-100 dark:border-white/5 hover:border-yellow-400/60 dark:hover:border-yellow-400/40 rounded-2xl p-3 sm:p-5 flex items-center justify-start gap-2.5 sm:gap-3.5 hover:shadow-lg hover:shadow-yellow-500/10 hover:-translate-y-1 active:translate-y-0 active:scale-[0.96] active:bg-yellow-100/80 dark:active:bg-yellow-400/20 transition-all duration-200 ease-out active:duration-75 group shadow-xs cursor-pointer touch-manipulation text-left select-none"
             >
-              <div className="w-12 h-12 bg-gray-50 dark:bg-white/5 rounded-xl flex items-center justify-center border border-gray-100 dark:border-white/10 group-hover:bg-[#FFCC00] dark:group-hover:bg-[#FFCC00] group-hover:border-yellow-400/80 group-hover:scale-105 transition-all duration-200 shrink-0 shadow-2xs">
-                <Download className="w-5 h-5 text-gray-800 dark:text-gray-200 group-hover:text-gray-950 transition-colors" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#1a1a1a] dark:bg-[#FFCC00] rounded-xl flex items-center justify-center border border-black/10 dark:border-yellow-400/80 group-hover:scale-105 group-hover:rotate-[3deg] group-active:scale-95 group-active:rotate-0 transition-all duration-200 shrink-0 shadow-2xs">
+                <Download className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-[#FFCC00] dark:text-[#141416] group-hover:translate-y-0.5 group-active:translate-y-0 transition-all" />
               </div>
-              <span className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base text-center sm:text-left leading-tight">Receive<br/>Package</span>
+              <span className="font-semibold text-gray-900 dark:text-white group-hover:text-yellow-950 dark:group-hover:text-white text-xs sm:text-base text-left leading-tight transition-colors">Receive<br/>Package</span>
             </button>
           </div>
 
@@ -241,27 +366,7 @@ export default function Home({
 
             <div 
               onClick={() => {
-                setSelectedDelivery({
-                  id: "active-1",
-                  title: "Google pixel 9pro",
-                  trackingCode: "#42324-HUD-PKG99P",
-                  status: "In-Transit",
-                  fromLocation: "GIG TERMINAL",
-                  toLocation: "Auchi, Edo State",
-                  date: "Today",
-                  time: "1:30 PM",
-                  weight: "Light (450g)",
-                  category: "Electronics",
-                  fragileNote: "Note: this Item was labelled as sensitive and fragile",
-                  rider: {
-                    name: "Divine Augustina",
-                    idCode: "#42324-FHJS44R-34R",
-                    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
-                    rating: 4.8,
-                    reviewCount: 32,
-                    price: "₦5,000"
-                  }
-                });
+                setIsViewingPackageStatus(true);
               }}
               className="bg-yellow-400 rounded-3xl p-6 sm:p-7 relative overflow-hidden group cursor-pointer shadow-sm hover:shadow-md transition-shadow"
             >
@@ -343,17 +448,24 @@ export default function Home({
                     setSelectedDelivery({
                       id: item.id,
                       title: item.title,
-                      trackingCode: item.id === "1" ? "#42324-HUD-PKG34R" : `#42324-HUD-${item.trackingId.replace('DART-', '')}`,
+                      trackingCode: item.trackingId.startsWith("DART-") ? `#42324-HUD-${item.trackingId.replace('DART-', '')}` : item.trackingId,
                       status: item.status,
-                      fromLocation: item.store === "AliExpress" ? "GIG TERMINAL" : item.store.toUpperCase(),
-                      toLocation: "Auchi, Edo State",
+                      fromLocation: item.fromLocation || (item.store === "AliExpress" ? "China, Beijing" : item.store.toUpperCase()),
+                      toLocation: item.toLocation || (item.isArrived ? "GIG Terminal, Auchi, Edo state" : "Akpakpava, Benin"),
                       date: item.date.includes("Today") ? "Today" : item.date.includes("Yesterday") ? "Yesterday" : item.date.split(" ")[0],
                       time: item.date.includes("PM") || item.date.includes("AM") ? item.date.split(" ").slice(-2).join(" ") : "12:47 PM",
                       weight: "Medium",
-                      category: item.title.toLowerCase().includes("shoe") ? "Clothes" : item.title.toLowerCase().includes("phone") || item.title.toLowerCase().includes("airpods") || item.title.toLowerCase().includes("macbook") ? "Electronics" : "Accessories",
+                      category: item.category || (item.title.toLowerCase().includes("shoe") ? "Clothes" : item.title.toLowerCase().includes("phone") || item.title.toLowerCase().includes("airpods") || item.title.toLowerCase().includes("macbook") ? "Electronics" : "Accessories"),
                       fragileNote: "Note: this Item was labelled as sensitive and fragile",
+                      isInbound: item.isInbound ?? (item.type === "linked"),
+                      courier: item.courier || item.store,
+                      shippedDate: item.shippedDate || "Jun 28th 2026",
+                      estimatedArrival: item.estimatedArrival || "Jul 30th 2026",
+                      isArrived: item.isArrived,
+                      arrivedDate: item.arrivedDate || "Jul 30th 2026 • 12:47 PM",
+                      pickupTerminal: item.pickupTerminal || "GIG Terminal, Auchi, Edo state",
                       rider: {
-                        name: "Divine Augustina",
+                        name: item.courier || "Divine Augustina",
                         idCode: "#42324-FHJS44R-34R",
                         avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
                         rating: 4.8,
@@ -362,12 +474,19 @@ export default function Home({
                       }
                     });
                   }}
-                  className="flex items-center justify-between p-3.5 sm:p-4.5 bg-white dark:bg-[#1c1c20] hover:bg-yellow-50/80 dark:hover:bg-yellow-400/10 border border-gray-100 dark:border-white/5 hover:border-yellow-300/80 dark:hover:border-yellow-400/30 rounded-2xl cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group touch-manipulation"
+                  className="flex items-center justify-between p-3.5 sm:p-4.5 bg-white dark:bg-[#1c1c20] hover:bg-yellow-50/80 dark:hover:bg-yellow-400/10 border border-gray-100 dark:border-white/5 hover:border-yellow-300/80 dark:hover:border-yellow-400/30 rounded-2xl cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 gap-3 sm:gap-3.5 group touch-manipulation"
                 >
-                  <div className="min-w-0 pr-2">
+                  {/* Package State Graphic */}
+                  <div className="w-12 h-12 sm:w-13 sm:h-13 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 shrink-0 flex items-center justify-center p-1.5">
+                    <PackageStateIcon status={item.status} className="w-full h-full object-contain" />
+                  </div>
+
+                  <div className="min-w-0 flex-1 pr-1">
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider mb-1.5 inline-block ${
                       item.status === "Delivered"
                         ? "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-400/10"
+                        : item.status === "In-Transit" || item.status === "Ready for pickup"
+                        ? "text-yellow-700 dark:text-yellow-400 bg-yellow-400/20"
                         : "text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-400/10"
                     }`}>
                       {item.status}
@@ -402,6 +521,15 @@ export default function Home({
       <ReceivePackageModal 
         isOpen={isReceiveModalOpen} 
         onClose={() => setIsReceiveModalOpen(false)} 
+        onSelectOption={(option) => {
+          if (option === "pickup") {
+            setIsReceiveModalOpen(false);
+            setIsRequestingPickup(true);
+          } else if (option === "inbound") {
+            setIsReceiveModalOpen(false);
+            setIsLinkingInbound(true);
+          }
+        }}
       />
       <SendPackageModal
         isOpen={isSendModalOpen}

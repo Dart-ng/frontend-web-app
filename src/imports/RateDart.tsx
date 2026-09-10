@@ -32,14 +32,14 @@ export default function RateDart({ onBack, onDone }: RateDartProps) {
   return (
     <div className="w-full flex-1 flex flex-col min-h-full bg-transparent relative pb-12 transition-colors">
       {/* Top Header */}
-      <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-white/5 sticky top-0 bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-sm z-10">
+      <div className="px-4 sm:px-6 py-3.5 flex items-center justify-between border-b border-gray-100 dark:border-white/5 sticky top-0 bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-sm z-10">
         <button
           onClick={() => {
             if (step === 1) onBack();
             else if (step === 2) setStep(1);
             else if (step === 3) setStep(2);
           }}
-          className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/5 text-gray-800 dark:text-white transition-colors"
+          className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/5 text-gray-800 dark:text-white transition-colors cursor-pointer"
           aria-label="Back"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -49,7 +49,7 @@ export default function RateDart({ onBack, onDone }: RateDartProps) {
       </div>
 
       {/* Main Container */}
-      <div className="flex-1 px-6 sm:px-10 py-6 max-w-xl mx-auto w-full flex flex-col justify-between">
+      <div className="flex-1 px-3.5 sm:px-8 py-5 sm:py-6 max-w-xl mx-auto w-full flex flex-col justify-between">
         
         {/* Step 1: Enjoying Dart.ng? */}
         {step === 1 && (
@@ -269,8 +269,8 @@ export default function RateDart({ onBack, onDone }: RateDartProps) {
                 className="w-full flex items-center justify-between p-4 sm:p-5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group text-left"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-yellow-400/15 flex items-center justify-center shrink-0 border border-yellow-400/20">
-                    <Share2 className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                  <div className="w-10 h-10 rounded-xl bg-yellow-400 flex items-center justify-center shrink-0 text-black shadow-2xs">
+                    <Share2 className="w-5 h-5" />
                   </div>
                   <div>
                     <h4 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white">

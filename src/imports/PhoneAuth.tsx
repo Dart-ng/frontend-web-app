@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { ArrowLeft, Lock, Sparkles } from "lucide-react";
 
 export default function PhoneAuth({
   onNext,
@@ -12,22 +11,8 @@ export default function PhoneAuth({
 
   return (
     <div className="flex flex-col w-full bg-transparent relative">
-      {/* Back Button (if provided/applicable) */}
-      {onBack && (
-        <button
-          onClick={onBack}
-          className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/5 transition-colors mb-6 -ml-2 text-gray-800 dark:text-white"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-      )}
-
       {/* Header */}
       <div className="mb-8">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow-400/10 border border-yellow-400/20 text-yellow-700 dark:text-yellow-400 text-xs font-semibold mb-3">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Welcome to Dart</span>
-        </div>
         <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-3 tracking-tight">
           What's your phone number?
         </h1>
@@ -66,7 +51,7 @@ export default function PhoneAuth({
       <div className="flex flex-col gap-4">
         <button
           onClick={onNext}
-          className="w-full h-14 bg-yellow-400 hover:bg-yellow-500 text-gray-950 font-bold rounded-2xl transition-all flex items-center justify-center shadow-sm hover:shadow-md active:scale-[0.99] text-base"
+          className="w-full h-14 bg-yellow-400 hover:bg-yellow-500 text-gray-950 font-bold rounded-2xl transition-all flex items-center justify-center shadow-sm hover:shadow-md active:scale-[0.99] text-base cursor-pointer"
         >
           Send OTP Verification
         </button>
@@ -84,7 +69,7 @@ export default function PhoneAuth({
         <button
           onClick={onNext}
           type="button"
-          className="w-full h-13 border border-gray-200 dark:border-white/10 bg-white dark:bg-[#18181b] hover:bg-gray-50 dark:hover:bg-white/5 text-gray-800 dark:text-white font-medium rounded-2xl transition-colors flex items-center justify-center gap-3 text-sm"
+          className="w-full h-13 border border-gray-200 dark:border-white/10 bg-white dark:bg-[#18181b] hover:bg-gray-50 dark:hover:bg-white/5 text-gray-800 dark:text-white font-medium rounded-2xl transition-colors flex items-center justify-center gap-3 text-sm cursor-pointer"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path
@@ -106,12 +91,6 @@ export default function PhoneAuth({
           </svg>
           <span>Continue with Google</span>
         </button>
-
-        {/* Security Notice */}
-        <div className="flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 mt-3">
-          <Lock className="w-4 h-4 text-gray-400" />
-          <span className="text-xs">Your number is secured with 256-bit encryption</span>
-        </div>
       </div>
     </div>
   );

@@ -12,7 +12,7 @@ const TRANSACTIONS = [
   { id: 5, title: 'Ride payment (Auchi → Iyapki)', subtitle: 'Order (Google pixel 9pro) • Aug 13th • 11:15 AM', amount: '-₦2,000', isCredit: false, dateGroup: 'This week' },
 ];
 
-export default function Wallet() {
+export default function Wallet({ onBack }: { onBack?: () => void } = {}) {
   const { resolvedTheme } = useTheme();
   const [view, setView] = useState<View>("home");
   const [fundsTab, setFundsTab] = useState<"deposit" | "withdraw">("deposit");
@@ -24,13 +24,14 @@ export default function Wallet() {
     if (view === "all_transactions" || view === "add_funds" || view === "transaction_details") setView("home");
     else if (view === "review") setView("add_funds");
     else if (view === "success") setView("home");
+    else onBack?.();
   };
 
   const renderHome = () => (
-    <div className="flex flex-col min-h-full pb-24 md:pb-10 bg-transparent transition-colors">
+    <div className="flex flex-col min-h-full pb-20 md:pb-10 bg-transparent transition-colors">
       {/* Header: Dark in light mode, top to bottom gradient in dark mode */}
       <div 
-        className="text-white dark:text-black px-5 sm:px-6 pt-[max(2rem,calc(env(safe-area-inset-top,0px)+1rem))] pb-7 sm:pb-8 rounded-b-[36px] sm:rounded-b-[40px] relative overflow-hidden shrink-0 transition-all shadow-sm"
+        className="text-white dark:text-black px-4 sm:px-6 pt-[max(1.75rem,calc(env(safe-area-inset-top,0px)+0.75rem))] pb-6 sm:pb-8 rounded-b-[30px] sm:rounded-b-[40px] relative overflow-hidden shrink-0 transition-all shadow-sm"
         style={{
           background: resolvedTheme === 'dark'
             ? 'linear-gradient(to bottom, #FFA600 0%, #FFCC00 100%)'
@@ -68,8 +69,13 @@ export default function Wallet() {
         />
 
         <div className="relative z-10">
-          <div className="flex items-center justify-between mb-8">
-            <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 dark:hover:bg-black/10 transition-colors">
+          <div className="flex items-center justify-between mb-6 sm:mb-8">
+            <button 
+              type="button"
+              onClick={onBack || goBack}
+              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 dark:hover:bg-black/10 transition-colors cursor-pointer"
+              title="Go back"
+            >
               <ArrowLeft className="w-5 h-5 text-white dark:text-black" />
             </button>
             <button className="w-10 h-10 flex items-center justify-center rounded-full bg-yellow-400 dark:bg-black/10 hover:bg-yellow-500 dark:hover:bg-black/20 transition-colors shrink-0">
@@ -77,62 +83,62 @@ export default function Wallet() {
             </button>
           </div>
 
-          <div className="text-center mb-10 sm:mb-12">
-            <p className="text-sm sm:text-base md:text-lg text-gray-400 dark:text-black/80 font-medium mb-1.5 sm:mb-2">Wallet balance</p>
-            <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-white dark:text-black leading-none">
-              <span className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl mr-1.5 font-bold text-white dark:text-black">₦</span>20,500<span className="text-xl sm:text-2xl md:text-3xl lg:text-4xl text-gray-400 dark:text-black/70 font-semibold">.00</span>
+          <div className="text-center mb-7 sm:mb-10">
+            <p className="text-xs sm:text-sm md:text-base text-gray-400 dark:text-black/80 font-medium mb-1 sm:mb-1.5">Wallet balance</p>
+            <h2 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-white dark:text-black leading-none">
+              <span className="text-xl sm:text-3xl md:text-4xl lg:text-5xl mr-1 font-bold text-white dark:text-black">₦</span>20,500<span className="text-lg sm:text-2xl md:text-3xl lg:text-4xl text-gray-400 dark:text-black/70 font-semibold">.00</span>
             </h2>
           </div>
 
           {/* Action Buttons: Dark pills with yellow icon badges */}
-          <div className="flex gap-4 sm:gap-6 justify-center">
+          <div className="flex gap-3.5 sm:gap-6 justify-center">
             <button 
               onClick={() => { setFundsTab("deposit"); setView("add_funds"); }}
-              className="bg-[#242426] dark:bg-[#18181a] hover:bg-[#2e2e30] dark:hover:bg-[#232326] border border-white/10 dark:border-transparent rounded-full px-5 sm:px-7 py-2.5 sm:py-3.5 flex items-center gap-2.5 sm:gap-3 transition-all shadow-sm group cursor-pointer touch-manipulation"
+              className="bg-[#242426] dark:bg-[#18181a] hover:bg-[#2e2e30] dark:hover:bg-[#232326] border border-white/10 dark:border-transparent rounded-full px-4 sm:px-7 py-2.5 sm:py-3.5 flex items-center gap-2 sm:gap-3 transition-all shadow-sm group cursor-pointer touch-manipulation"
             >
               <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-yellow-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                 <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-black stroke-[2.5]" />
               </div>
-              <span className="font-semibold text-sm sm:text-base text-white">Add funds</span>
+              <span className="font-semibold text-xs sm:text-base text-white">Add funds</span>
             </button>
             
             <button 
               onClick={() => { setFundsTab("withdraw"); setView("add_funds"); }}
-              className="bg-[#242426] dark:bg-[#18181a] hover:bg-[#2e2e30] dark:hover:bg-[#232326] border border-white/10 dark:border-transparent rounded-full px-5 sm:px-7 py-2.5 sm:py-3.5 flex items-center gap-2.5 sm:gap-3 transition-all shadow-sm group cursor-pointer touch-manipulation"
+              className="bg-[#242426] dark:bg-[#18181a] hover:bg-[#2e2e30] dark:hover:bg-[#232326] border border-white/10 dark:border-transparent rounded-full px-4 sm:px-7 py-2.5 sm:py-3.5 flex items-center gap-2 sm:gap-3 transition-all shadow-sm group cursor-pointer touch-manipulation"
             >
               <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-yellow-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                 <ArrowUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-black stroke-[2.5]" />
               </div>
-              <span className="font-semibold text-sm sm:text-base text-white">Withdraw</span>
+              <span className="font-semibold text-xs sm:text-base text-white">Withdraw</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* Recent Transactions */}
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-lg text-gray-900 dark:text-white">Recent Transactions</h3>
+      <div className="px-3 sm:px-5 pt-3.5 pb-5 sm:py-6">
+        <div className="flex items-center justify-between mb-2.5 sm:mb-3">
+          <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white">Recent Transactions</h3>
           <button 
             onClick={() => setView("all_transactions")} 
-            className="text-sm font-medium text-gray-500 dark:text-white underline decoration-gray-300 dark:decoration-white underline-offset-4 hover:opacity-80 transition-opacity"
+            className="text-xs sm:text-sm font-medium text-gray-500 dark:text-white underline decoration-gray-300 dark:decoration-white underline-offset-4 hover:opacity-80 transition-opacity cursor-pointer"
           >
             See all
           </button>
         </div>
         
-        <p className="text-xs font-semibold text-gray-400 dark:text-gray-400 mb-3 uppercase tracking-wider">Today</p>
+        <p className="text-[11px] sm:text-xs font-semibold text-gray-400 dark:text-gray-400 mb-2 sm:mb-2.5 uppercase tracking-wider">Today</p>
         
         {/* Grouped Card for Transactions matching dark screenshot */}
-        <div className="bg-white dark:bg-[#1e1e20] border border-gray-100 dark:border-white/5 rounded-2xl p-4 divide-y divide-gray-50 dark:divide-white/5 shadow-xs">
+        <div className="bg-white dark:bg-[#1e1e20] border border-gray-100 dark:border-white/5 rounded-2xl p-3 sm:p-4 divide-y divide-gray-50 dark:divide-white/5 shadow-xs">
           {TRANSACTIONS.filter(t => t.dateGroup === 'Today').map((tx) => (
             <div 
               key={tx.id} 
               onClick={() => { setSelectedTx(tx); setView("transaction_details"); }} 
-              className="flex items-center justify-between cursor-pointer group py-3.5 first:pt-1 last:pb-1"
+              className="flex items-center justify-between cursor-pointer group py-3 first:pt-0.5 last:pb-0.5"
             >
               <div className="flex gap-3 items-center">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 ${
                   tx.isCredit 
                     ? 'bg-green-50 dark:bg-emerald-950/40 text-green-600 dark:text-emerald-400 border border-green-100 dark:border-emerald-500/20' 
                     : 'bg-red-50 dark:bg-rose-950/40 text-red-500 dark:text-rose-400 border border-red-100 dark:border-rose-500/20'
@@ -159,7 +165,7 @@ export default function Wallet() {
           ))}
         </div>
         
-        <div className="mt-8 text-center">
+        <div className="mt-6 text-center">
           <p className="text-xs text-gray-400 dark:text-gray-500">No more earnings to show</p>
         </div>
       </div>
@@ -168,31 +174,31 @@ export default function Wallet() {
 
   const renderAllTransactions = () => (
     <div className="flex flex-col min-h-full bg-transparent transition-colors">
-      <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-white/5 sticky top-0 bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-md z-10">
-        <button onClick={goBack} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+      <div className="px-4 sm:px-6 py-3.5 flex items-center justify-between border-b border-gray-100 dark:border-white/5 sticky top-0 bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-md z-10">
+        <button onClick={goBack} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer">
           <ArrowLeft className="w-5 h-5 text-gray-800 dark:text-white" />
         </button>
         <h1 className="text-base font-semibold text-gray-900 dark:text-white">All Earnings</h1>
-        <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+        <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer">
           <Filter className="w-5 h-5 text-gray-600 dark:text-gray-300" />
         </button>
       </div>
 
-      <div className="p-6">
-        <h2 className="font-semibold text-gray-900 dark:text-white mb-6">All Transactions</h2>
+      <div className="px-3 sm:px-5 py-4 sm:py-6">
+        <h2 className="font-semibold text-gray-900 dark:text-white mb-4 sm:mb-6 text-base">All Transactions</h2>
         
         {['Today', 'This week'].map(group => (
-          <div key={group} className="mb-8 last:mb-0">
-            <p className="text-xs font-semibold text-gray-400 dark:text-gray-400 mb-3 uppercase tracking-wider">{group}</p>
-            <div className="bg-white dark:bg-[#1e1e20] border border-gray-100 dark:border-white/5 rounded-2xl p-4 divide-y divide-gray-50 dark:divide-white/5 shadow-xs">
+          <div key={group} className="mb-6 sm:mb-8 last:mb-0">
+            <p className="text-[11px] sm:text-xs font-semibold text-gray-400 dark:text-gray-400 mb-2 sm:mb-2.5 uppercase tracking-wider">{group}</p>
+            <div className="bg-white dark:bg-[#1e1e20] border border-gray-100 dark:border-white/5 rounded-2xl p-3 sm:p-4 divide-y divide-gray-50 dark:divide-white/5 shadow-xs">
               {TRANSACTIONS.filter(t => t.dateGroup === group).map((tx) => (
                 <div 
                   key={tx.id} 
                   onClick={() => { setSelectedTx(tx); setView("transaction_details"); }} 
-                  className="flex items-center justify-between cursor-pointer group py-3.5 first:pt-1 last:pb-1"
+                  className="flex items-center justify-between cursor-pointer group py-3 first:pt-0.5 last:pb-0.5"
                 >
                   <div className="flex gap-3 items-center">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                    <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 ${
                       tx.isCredit 
                         ? 'bg-green-50 dark:bg-emerald-950/40 text-green-600 dark:text-emerald-400 border border-green-100 dark:border-emerald-500/20' 
                         : 'bg-red-50 dark:bg-rose-950/40 text-red-500 dark:text-rose-400 border border-red-100 dark:border-rose-500/20'
@@ -219,7 +225,7 @@ export default function Wallet() {
           </div>
         ))}
         
-        <div className="mt-8 text-center">
+        <div className="mt-6 text-center">
           <p className="text-xs text-gray-400 dark:text-gray-500">No more earnings to show</p>
         </div>
       </div>
@@ -233,8 +239,8 @@ export default function Wallet() {
 
   const renderAddFunds = () => (
     <div className="flex flex-col min-h-full bg-transparent transition-colors">
-      <div className="px-6 py-4 flex items-center justify-between sticky top-0 bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-md z-10 border-b border-gray-100 dark:border-white/5">
-        <button onClick={goBack} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-50 dark:hover:bg-white/5 transition-colors -ml-2">
+      <div className="px-4 sm:px-6 py-3.5 flex items-center justify-between sticky top-0 bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-md z-10 border-b border-gray-100 dark:border-white/5">
+        <button onClick={goBack} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer">
           <ArrowLeft className="w-5 h-5 text-gray-800 dark:text-white" />
         </button>
         <h1 className="text-base font-semibold text-gray-900 dark:text-white absolute left-1/2 -translate-x-1/2">
@@ -242,7 +248,7 @@ export default function Wallet() {
         </h1>
       </div>
 
-      <div className="p-6 flex flex-col flex-1">
+      <div className="px-4 sm:px-6 py-4 sm:py-6 flex flex-col flex-1">
         
         {/* Toggle */}
         <div className="bg-gray-100 dark:bg-[#1f1f23] p-1 rounded-full flex mb-6 sm:mb-8 w-full max-w-xs mx-auto border border-gray-100 dark:border-white/5">
@@ -276,7 +282,7 @@ export default function Wallet() {
             </span>
             <button 
               onClick={() => setAmount("20500")}
-              className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-yellow-400/20 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-400/30 transition-colors cursor-pointer"
+              className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black transition-colors cursor-pointer shadow-2xs"
             >
               Use Max
             </button>
@@ -410,8 +416,8 @@ export default function Wallet() {
 
   const renderReviewDetails = () => (
     <div className="flex flex-col min-h-full bg-transparent transition-colors">
-      <div className="px-6 py-4 flex items-center justify-between sticky top-0 bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-md z-10 border-b border-gray-50 dark:border-white/5">
-        <button onClick={goBack} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-50 dark:hover:bg-white/5 transition-colors -ml-2">
+      <div className="px-4 sm:px-6 py-3.5 flex items-center justify-between sticky top-0 bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-md z-10 border-b border-gray-50 dark:border-white/5">
+        <button onClick={goBack} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer">
           <ArrowLeft className="w-5 h-5 text-gray-800 dark:text-white" />
         </button>
         <h1 className="text-base font-semibold text-gray-900 dark:text-white absolute left-1/2 -translate-x-1/2">
@@ -419,7 +425,7 @@ export default function Wallet() {
         </h1>
       </div>
 
-      <div className="p-6 flex flex-col flex-1">
+      <div className="px-4 sm:px-6 py-4 sm:py-6 flex flex-col flex-1">
         
         <div className="bg-gray-50 dark:bg-[#1f1f23] rounded-2xl p-4 border border-gray-100 dark:border-white/5 mb-6 flex flex-col gap-4">
           <div className="flex justify-between items-center">
@@ -501,8 +507,8 @@ export default function Wallet() {
 
   const renderSuccess = () => (
     <div className="flex flex-col min-h-full bg-transparent transition-colors">
-      <div className="px-6 py-4 flex items-center justify-between sticky top-0 bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-md z-10 border-b border-gray-100 dark:border-white/5">
-        <button onClick={goBack} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-50 dark:hover:bg-white/5 transition-colors -ml-2">
+      <div className="px-4 sm:px-6 py-3.5 flex items-center justify-between sticky top-0 bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-md z-10 border-b border-gray-100 dark:border-white/5">
+        <button onClick={goBack} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer">
           <ArrowLeft className="w-5 h-5 text-gray-800 dark:text-white" />
         </button>
         <h1 className="text-base font-semibold text-gray-900 dark:text-white absolute left-1/2 -translate-x-1/2">
@@ -510,7 +516,7 @@ export default function Wallet() {
         </h1>
       </div>
 
-      <div className="p-6 flex flex-col flex-1 items-center justify-center">
+      <div className="px-4 sm:px-6 py-4 sm:py-6 flex flex-col flex-1 items-center justify-center">
         
         <div className="relative w-32 h-32 flex items-center justify-center mb-6">
           <div className="absolute inset-0 bg-[radial-gradient(circle,_#10b981_3px,_transparent_3px)] bg-[length:16px_16px] opacity-20 rounded-full animate-[spin_20s_linear_infinite]"></div>
@@ -573,14 +579,14 @@ export default function Wallet() {
 
   const renderTransactionDetails = () => (
     <div className="flex flex-col min-h-full bg-transparent transition-colors">
-      <div className="px-6 py-4 flex items-center justify-between sticky top-0 bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-md z-10 border-b border-gray-50 dark:border-white/5">
-        <button onClick={goBack} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-50 dark:hover:bg-white/5 transition-colors -ml-2">
+      <div className="px-4 sm:px-6 py-3.5 flex items-center justify-between sticky top-0 bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-md z-10 border-b border-gray-50 dark:border-white/5">
+        <button onClick={goBack} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer">
           <ArrowLeft className="w-5 h-5 text-gray-800 dark:text-white" />
         </button>
         <h1 className="text-base font-semibold text-gray-900 dark:text-white absolute left-1/2 -translate-x-1/2">Transaction details</h1>
       </div>
 
-      <div className="p-6 flex flex-col flex-1 items-center">
+      <div className="px-4 sm:px-6 py-4 sm:py-6 flex flex-col flex-1 items-center">
         
         <div className="bg-green-500 rounded-3xl p-5 mb-4 shadow-lg shadow-green-500/20">
            <CheckCircle2 className="w-10 h-10 text-white" />

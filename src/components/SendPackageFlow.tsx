@@ -36,15 +36,18 @@ import {
   Send,
   MoreVertical,
   Maximize2,
+  Smartphone,
+  AlertOctagon,
 } from "lucide-react";
 import defaultPixelPhoto from "../assets/google_pixel_photo.jpg";
+import iphone12Photo from "../assets/iphone_12_pro.jpg";
 import divineAvatar from "../assets/divine_augustina_rider.jpg";
-import moovCourierBanner from "../assets/moov_courier_rider_banner.jpg";
-import dropOffBoxGoodMarkIcon from "../assets/drop_off_box_good_mark.png";
-import courierRatingAvatar from "../assets/courier_rating_avatar.jpg";
-import celebrationConfetti from "../assets/celebration_confetti.png";
-import greenSuccessBadge from "../assets/green_success_badge.png";
+import allRidersImage from "../assets/all-riders-image.png";
+import dropOffBoxGoodMarkIcon from "../assets/Good-box.svg";
+import courierRatingAvatar from "../assets/courier_rating_avatar.png";
+import greenSuccessBadge from "../assets/good-mark.svg";
 import SendPackageModal from "./SendPackageModal";
+import ConfettiBackground from "./ConfettiBackground";
 
 export interface Rider {
   id: string;
@@ -163,6 +166,9 @@ interface SendPackageFlowProps {
     file?: File;
     previewUrl: string;
   } | null;
+  mode?: "send" | "pickup";
+  initialScreen?: FlowScreen;
+  initialIsRiderAccepted?: boolean;
   onBack: () => void;
   onComplete?: (details: {
     packageName: string;
@@ -181,31 +187,43 @@ interface SendPackageFlowProps {
 
 export default function SendPackageFlow({
   initialImage,
+  mode = "send",
+  initialScreen = "details",
+  initialIsRiderAccepted = false,
   onBack,
   onComplete,
 }: SendPackageFlowProps) {
-  const [screen, setScreen] = useState<FlowScreen>("details");
+  const [screen, setScreen] = useState<FlowScreen>(initialScreen);
   const [capturedImage, setCapturedImage] = useState<{
     file?: File;
     previewUrl: string;
-  } | null>(initialImage || null);
+  } | null>(
+    initialImage || (mode === "pickup" ? { previewUrl: iphone12Photo } : null)
+  );
 
   // Camera modal state (only camera and prompt modals appear as popups)
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
   const [cameraModalInitialMode, setCameraModalInitialMode] = useState<"prompt" | "camera">("camera");
 
   // Form state for Package Details
-  const [packageName, setPackageName] = useState("Google pixel 9pro");
+  const [packageName, setPackageName] = useState(
+    mode === "pickup" ? "Iphone 12 pro" : "Google pixel 9pro"
+  );
   const [selectedCategory, setSelectedCategory] = useState<
     "Electronics" | "Documents" | "Clothes" | "Others"
   >("Electronics");
   const [selectedWeight, setSelectedWeight] = useState<
     "light" | "medium" | "heavy" | ""
-  >("light");
+  >(mode === "pickup" ? "" : "light");
+  const [isFragile, setIsFragile] = useState(false);
 
   // Destination screen state
-  const [fromLocation, setFromLocation] = useState("Auchi, Edo State");
-  const [toLocation, setToLocation] = useState("Benin");
+  const [fromLocation, setFromLocation] = useState(
+    mode === "pickup" ? "GIG Logistics Terminal" : "Auchi, Edo State"
+  );
+  const [toLocation, setToLocation] = useState(
+    mode === "pickup" ? "Auchi, Edo State" : "Benin"
+  );
   const [estimatedFee, setEstimatedFee] = useState("5,000");
 
   // Add new location state
@@ -311,7 +329,9 @@ export default function SendPackageFlow({
   // Package Status screen state
   const [countdown, setCountdown] = useState(90); // 90 seconds = 1m:30s
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [isRiderAccepted, setIsRiderAccepted] = useState(false);
+  const [isRiderAccepted, setIsRiderAccepted] = useState(
+    initialScreen === "package_status" ? (initialIsRiderAccepted ?? true) : false
+  );
   const [isPackageArrived, setIsPackageArrived] = useState(false);
   const [transitCountdown, setTransitCountdown] = useState(1563); // 26:03
   const [showReportModal, setShowReportModal] = useState(false);
@@ -441,118 +461,127 @@ export default function SendPackageFlow({
   };
 
   return (
-    <div className={`w-full flex-1 flex flex-col min-h-full h-full bg-transparent relative transition-colors ${
+    <div className={`w-full max-w-xl mx-auto flex-1 flex flex-col min-h-full h-full bg-transparent relative transition-colors ${
       screen === "success" || screen === "package_status" ? "pb-0" : "pb-28 md:pb-16"
     }`}>
       {/* Request Accepted Toast (Matches user screenshot exactly) */}
+      {/* Request Accepted Toast (Matches user screenshot exactly) */}
       {showAcceptedToast && (
-        <div 
-          onClick={() => setShowAcceptedToast(false)}
-          className="fixed top-6 left-1/2 -translate-x-1/2 z-[150] w-[92%] max-w-sm sm:max-w-md bg-white dark:bg-[#1c1d22] border border-gray-100 dark:border-white/10 rounded-2xl sm:rounded-full px-4 py-3 sm:px-5 sm:py-3.5 shadow-[0_10px_35px_rgba(0,0,0,0.14)] dark:shadow-[0_10px_35px_rgba(0,0,0,0.6)] flex items-center gap-3.5 animate-in fade-in slide-in-from-top-4 duration-300 cursor-pointer"
-        >
-          {/* Dark Circular Badge with Yellow Box + Green Checkmark Badge */}
-          <div className="w-11 h-11 rounded-full bg-[#181a20] dark:bg-[#252830] flex items-center justify-center shrink-0 relative">
-            <div className="relative">
-              {/* Cardboard Box with Red Tape */}
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M4 7.5L12 3L20 7.5V17.5C20 18.6046 19.1046 19.5 18 19.5H6C4.89543 19.5 4 18.6046 4 17.5V7.5Z"
-                  fill="#F5A623"
-                />
-                <path
-                  d="M4 7.5L12 12L20 7.5"
-                  fill="#D98207"
-                  fillOpacity="0.4"
-                />
-                <path
-                  d="M10.75 3.8L10.75 12L13.25 12L13.25 3.8"
-                  fill="#E53935"
-                />
-                <path
-                  d="M8 9.75H16"
-                  stroke="#D98207"
-                  strokeWidth="0.75"
-                  strokeDasharray="1.5 1.5"
-                />
-              </svg>
-              {/* Green Circle with white Checkmark badge */}
-              <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#22C55E] flex items-center justify-center border border-[#181a20] dark:border-[#252830] shadow-xs">
-                <Check className="w-2.5 h-2.5 text-white stroke-[3.5]" />
+        <div className="fixed top-6 inset-x-0 md:left-64 xl:right-[340px] 2xl:right-[380px] z-[150] flex justify-center items-center pointer-events-none px-4">
+          <div 
+            onClick={() => setShowAcceptedToast(false)}
+            className="pointer-events-auto w-full max-w-sm sm:max-w-md bg-white dark:bg-[#1c1d22] border border-gray-100 dark:border-white/10 rounded-2xl sm:rounded-full px-4 py-3 sm:px-5 sm:py-3.5 shadow-[0_10px_35px_rgba(0,0,0,0.14)] dark:shadow-[0_10px_35px_rgba(0,0,0,0.6)] flex items-center gap-3.5 animate-in fade-in slide-in-from-top-4 duration-300 cursor-pointer"
+          >
+            {/* Dark Circular Badge with Yellow Box + Green Checkmark Badge */}
+            <div className="w-11 h-11 rounded-full bg-[#181a20] dark:bg-[#252830] flex items-center justify-center shrink-0 relative">
+              <div className="relative">
+                {/* Cardboard Box with Red Tape */}
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M4 7.5L12 3L20 7.5V17.5C20 18.6046 19.1046 19.5 18 19.5H6C4.89543 19.5 4 18.6046 4 17.5V7.5Z"
+                    fill="#F5A623"
+                  />
+                  <path
+                    d="M4 7.5L12 12L20 7.5"
+                    fill="#D98207"
+                    fillOpacity="0.4"
+                  />
+                  <path
+                    d="M10.75 3.8L10.75 12L13.25 12L13.25 3.8"
+                    fill="#E53935"
+                  />
+                  <path
+                    d="M8 9.75H16"
+                    stroke="#D98207"
+                    strokeWidth="0.75"
+                    strokeDasharray="1.5 1.5"
+                  />
+                </svg>
+                {/* Green Circle with white Checkmark badge */}
+                <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#22C55E] flex items-center justify-center border border-[#181a20] dark:border-[#252830] shadow-xs">
+                  <Check className="w-2.5 h-2.5 text-white stroke-[3.5]" />
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Text block */}
-          <div className="flex-1 min-w-0">
-            <h4 className="text-sm sm:text-base font-semibold text-gray-950 dark:text-white leading-tight">
-              Request accepted
-            </h4>
-            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              Rider has accept your request
-            </p>
+            {/* Text block */}
+            <div className="flex-1 min-w-0">
+              <h4 className="text-sm sm:text-base font-semibold text-gray-950 dark:text-white leading-tight">
+                Request accepted
+              </h4>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                Rider has accept your request
+              </p>
+            </div>
           </div>
         </div>
       )}
       {/* Toast Notice */}
       {showCancelledToast && (
-        <div 
-          onClick={() => setShowCancelledToast(false)}
-          className="fixed top-6 left-1/2 -translate-x-1/2 z-[150] w-[92%] max-w-sm sm:max-w-md bg-white dark:bg-[#1c1d22] border border-gray-100 dark:border-white/10 rounded-2xl sm:rounded-full px-4 py-3 sm:px-5 sm:py-3.5 shadow-[0_10px_35px_rgba(0,0,0,0.14)] dark:shadow-[0_10px_35px_rgba(0,0,0,0.6)] flex items-center gap-3.5 animate-in fade-in slide-in-from-top-4 duration-300 cursor-pointer"
-        >
-          {/* Dark Circular Badge with Yellow Box + Red X Badge */}
-          <div className="w-11 h-11 rounded-full bg-[#181a20] dark:bg-[#252830] flex items-center justify-center shrink-0 relative">
-            <div className="relative">
-              {/* Cardboard Box with Red Tape */}
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M4 7.5L12 3L20 7.5V17.5C20 18.6046 19.1046 19.5 18 19.5H6C4.89543 19.5 4 18.6046 4 17.5V7.5Z"
-                  fill="#F5A623"
-                />
-                <path
-                  d="M4 7.5L12 12L20 7.5"
-                  fill="#D98207"
-                  fillOpacity="0.4"
-                />
-                <path
-                  d="M10.75 3.8L10.75 12L13.25 12L13.25 3.8"
-                  fill="#E53935"
-                />
-                <path
-                  d="M8 9.75H16"
-                  stroke="#D98207"
-                  strokeWidth="0.75"
-                  strokeDasharray="1.5 1.5"
-                />
-              </svg>
-              {/* Red Circle with white X badge */}
-              <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#E53935] flex items-center justify-center border border-[#181a20] dark:border-[#252830] shadow-xs">
-                <X className="w-2 h-2 text-white stroke-[3.5]" />
+        <div className="fixed top-6 inset-x-0 md:left-64 xl:right-[340px] 2xl:right-[380px] z-[150] flex justify-center items-center pointer-events-none px-4">
+          <div 
+            onClick={() => setShowCancelledToast(false)}
+            className="pointer-events-auto w-full max-w-sm sm:max-w-md bg-white dark:bg-[#1c1d22] border border-gray-100 dark:border-white/10 rounded-2xl sm:rounded-full px-4 py-3 sm:px-5 sm:py-3.5 shadow-[0_10px_35px_rgba(0,0,0,0.14)] dark:shadow-[0_10px_35px_rgba(0,0,0,0.6)] flex items-center gap-3.5 animate-in fade-in slide-in-from-top-4 duration-300 cursor-pointer"
+          >
+            {/* Dark Circular Badge with Yellow Box + Red X Badge */}
+            <div className="w-11 h-11 rounded-full bg-[#181a20] dark:bg-[#252830] flex items-center justify-center shrink-0 relative">
+              <div className="relative">
+                {/* Cardboard Box with Red Tape */}
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M4 7.5L12 3L20 7.5V17.5C20 18.6046 19.1046 19.5 18 19.5H6C4.89543 19.5 4 18.6046 4 17.5V7.5Z"
+                    fill="#F5A623"
+                  />
+                  <path
+                    d="M4 7.5L12 12L20 7.5"
+                    fill="#D98207"
+                    fillOpacity="0.4"
+                  />
+                  <path
+                    d="M10.75 3.8L10.75 12L13.25 12L13.25 3.8"
+                    fill="#E53935"
+                  />
+                  <path
+                    d="M8 9.75H16"
+                    stroke="#D98207"
+                    strokeWidth="0.75"
+                    strokeDasharray="1.5 1.5"
+                  />
+                </svg>
+                {/* Red Circle with white X badge */}
+                <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#E53935] flex items-center justify-center border border-[#181a20] dark:border-[#252830] shadow-xs">
+                  <X className="w-2 h-2 text-white stroke-[3.5]" />
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Text block */}
-          <div className="flex-1 min-w-0">
-            <h4 className="text-sm sm:text-base font-semibold text-gray-950 dark:text-white leading-tight">
-              This delivery was cancelled
-            </h4>
-            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              You cancelled this delivery
-            </p>
+            {/* Text block */}
+            <div className="flex-1 min-w-0">
+              <h4 className="text-sm sm:text-base font-semibold text-gray-950 dark:text-white leading-tight">
+                This delivery was cancelled
+              </h4>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                You cancelled this delivery
+              </p>
+            </div>
           </div>
         </div>
       )}
 
       {copyToast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] bg-gray-900 dark:bg-white text-white dark:text-black text-xs font-semibold px-4 py-2.5 rounded-full shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
-          <Check className="w-3.5 h-3.5 stroke-[3]" />
-          <span>{copyToast}</span>
+        <div className="fixed top-6 inset-x-0 md:left-64 xl:right-[340px] 2xl:right-[380px] z-[100] flex justify-center items-center pointer-events-none px-4">
+          <div className="pointer-events-auto bg-gray-900 dark:bg-white text-white dark:text-black text-xs font-semibold px-4 py-2.5 rounded-full shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+            <Check className="w-3.5 h-3.5 stroke-[3]" />
+            <span>{copyToast}</span>
+          </div>
         </div>
       )}
       {inviteToast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] bg-[#FFCC00] text-gray-950 text-xs font-bold px-4 py-2.5 rounded-full shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
-          <Check className="w-3.5 h-3.5 stroke-[3]" />
-          <span>{inviteToast}</span>
+        <div className="fixed top-6 inset-x-0 md:left-64 xl:right-[340px] 2xl:right-[380px] z-[100] flex justify-center items-center pointer-events-none px-4">
+          <div className="pointer-events-auto bg-[#FFCC00] text-gray-950 text-xs font-bold px-4 py-2.5 rounded-full shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+            <Check className="w-3.5 h-3.5 stroke-[3]" />
+            <span>{inviteToast}</span>
+          </div>
         </div>
       )}
 
@@ -645,261 +674,497 @@ export default function SendPackageFlow({
       {/* ========================================================================= */}
       {screen === "details" && (
         <div className="w-full flex-1 flex flex-col animate-in fade-in duration-200">
-          {/* Header Bar */}
-          <div className="px-5 sm:px-8 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-3 sm:pb-4 flex items-center justify-between bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-md sticky top-0 z-20 border-b border-gray-100 dark:border-white/5">
-            <button
-              type="button"
-              onClick={onBack}
-              className="w-10 h-10 -ml-2 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-800 dark:text-white transition-colors cursor-pointer touch-manipulation"
-              title="Go back"
-            >
-              <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
-            </button>
-
-            <h1 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white tracking-tight">
-              Package details
-            </h1>
-
-            <button
-              type="button"
-              onClick={onBack}
-              className="w-10 h-10 rounded-full bg-gray-500/10 dark:bg-white/10 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-500/20 dark:hover:bg-white/15 transition-colors cursor-pointer"
-              title="Close"
-            >
-              <X className="w-5 h-5 stroke-[2.2]" />
-            </button>
-          </div>
-
-          {/* Form Body */}
-          <div className="flex-1 px-5 sm:px-8 py-6 space-y-6">
-            {/* Package Image Card with Retake/Change Camera Action */}
-            <div className="relative w-full aspect-[16/9] sm:aspect-[21/9] rounded-[24px] overflow-hidden bg-neutral-900 border border-gray-200/60 dark:border-white/10 shadow-sm group">
-              <img
-                src={capturedImage?.previewUrl || defaultPixelPhoto}
-                alt="Package"
-                className="w-full h-full object-cover"
-              />
-
-              {/* Retake Camera Button Overlay */}
-              <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+          {mode === "pickup" ? (
+            /* ========================================================================= */
+            /* REQUEST PICKUP: ENTER PACKAGE INFORMATION (Exact Screenshot Match)        */
+            /* ========================================================================= */
+            <div className="flex-1 flex flex-col px-3.5 sm:px-8 py-4 sm:py-5 max-w-xl mx-auto w-full">
+              {/* Header: Back Arrow (Left) & Circular Close Button (Right) */}
+              <div className="flex items-center justify-between mb-5">
                 <button
                   type="button"
-                  onClick={() => {
-                    setCameraModalInitialMode("camera");
-                    setIsCameraModalOpen(true);
-                  }}
-                  className="px-4 py-2 rounded-full bg-white/90 text-gray-900 font-semibold text-xs flex items-center gap-2 shadow-lg backdrop-blur-md cursor-pointer hover:bg-white transition-all"
+                  onClick={onBack}
+                  className="w-10 h-10 -ml-2 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-900 dark:text-white transition-colors cursor-pointer touch-manipulation"
+                  title="Go back"
                 >
-                  <Camera className="w-4 h-4" />
-                  <span>Retake Photo</span>
+                  <ArrowLeft className="w-6 h-6 stroke-[2.4]" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onBack}
+                  className="w-9 h-9 rounded-full bg-neutral-400/25 dark:bg-white/15 flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-neutral-400/40 dark:hover:bg-white/25 transition-colors cursor-pointer"
+                  title="Close"
+                >
+                  <X className="w-4 h-4 stroke-[2.4]" />
                 </button>
               </div>
 
-              {/* Top-Right Change Picture Badge */}
-              <button
-                type="button"
-                onClick={() => {
-                  setCameraModalInitialMode("prompt");
-                  setIsCameraModalOpen(true);
-                }}
-                className="absolute top-3 right-3 px-3 py-1.5 rounded-full bg-black/50 hover:bg-black/75 backdrop-blur-md flex items-center gap-1.5 text-white/90 text-xs font-medium transition-colors cursor-pointer"
-                title="Change picture"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Change</span>
-              </button>
-            </div>
+              {/* Title & Subtitle */}
+              <div className="mb-6">
+                <h1 className="text-2xl sm:text-[28px] font-extrabold text-gray-950 dark:text-white tracking-tight leading-tight">
+                  Enter package information
+                </h1>
+                <p className="text-sm text-gray-400 dark:text-gray-400 mt-1.5 font-normal">
+                  Select the destination of this package
+                </p>
+              </div>
 
-            {/* Package name Section */}
-            <div>
-              <label className="block text-[17px] font-bold text-gray-950 dark:text-white mb-2 tracking-tight">
-                Package name
-              </label>
-              <div className="relative flex items-center">
-                <input
-                  type="text"
-                  value={packageName}
-                  onChange={(e) => setPackageName(e.target.value)}
-                  placeholder="Enter package name"
-                  className="w-full px-4 py-3.5 pr-10 rounded-2xl border border-gray-200/90 dark:border-white/10 bg-white dark:bg-[#161618] text-gray-900 dark:text-white font-medium text-[15px] placeholder:text-gray-400 focus:outline-none focus:border-[#FFCC00] focus:ring-2 focus:ring-[#FFCC00]/30 transition-all shadow-2xs"
-                />
-                {packageName && (
+              {/* Form Content */}
+              <div className="space-y-6 flex-1">
+                {/* 1. Package name */}
+                <div>
+                  <label className="block text-[16px] font-bold text-gray-950 dark:text-white mb-2 tracking-tight">
+                    Package name
+                  </label>
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={packageName}
+                      onChange={(e) => setPackageName(e.target.value)}
+                      placeholder="Enter package name"
+                      className="w-full px-4 py-3.5 pr-11 rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#161618] text-gray-900 dark:text-white font-medium text-[15px] placeholder:text-gray-400 focus:outline-none focus:border-[#fed766] focus:ring-2 focus:ring-[#fed766]/30 transition-all shadow-2xs"
+                    />
+                    {packageName && (
+                      <button
+                        type="button"
+                        onClick={() => setPackageName("")}
+                        className="absolute right-3.5 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors cursor-pointer"
+                        title="Clear input"
+                      >
+                        <X className="w-4 h-4 stroke-[2.2]" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Select category */}
+                <div>
+                  <label className="block text-[16px] font-bold text-gray-950 dark:text-white mb-2.5 tracking-tight">
+                    Select category
+                  </label>
+                  <div className="flex flex-wrap gap-2.5">
+                    {[
+                      { id: "Electronics", label: "Electronics", icon: Smartphone },
+                      { id: "Documents", label: "Documents", icon: FileText },
+                      { id: "Clothes", label: "Clothes", icon: Shirt },
+                      { id: "Others", label: "Others", icon: Package },
+                    ].map((cat) => {
+                      const IconComp = cat.icon;
+                      const isSelected = selectedCategory === cat.id;
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setSelectedCategory(cat.id as any)}
+                          className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl sm:rounded-full text-sm font-medium transition-all cursor-pointer border ${
+                            isSelected
+                              ? "border-[#fed766] bg-[#fed766]/15 text-gray-950 dark:text-white font-semibold ring-1 ring-[#fed766]/50 shadow-2xs"
+                              : "border-gray-200/80 dark:border-white/10 bg-white dark:bg-[#161618] text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:border-white/20"
+                          }`}
+                        >
+                          <IconComp className="w-4 h-4 text-gray-700 dark:text-gray-200" strokeWidth={isSelected ? 2.2 : 1.8} />
+                          <span>{cat.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 3. Estimated Weight */}
+                <div>
+                  <label className="block text-[16px] font-bold text-gray-950 dark:text-white mb-2.5 tracking-tight">
+                    Estimated Weight
+                  </label>
+                  <div className="rounded-2xl border border-gray-200/90 dark:border-white/10 overflow-hidden divide-y divide-gray-100 dark:divide-white/5 bg-white dark:bg-[#161618] shadow-2xs">
+                    {/* Weight Option 1 */}
+                    <div
+                      onClick={() => setSelectedWeight("light")}
+                      className="p-4 flex items-start gap-3.5 cursor-pointer hover:bg-gray-50/80 dark:hover:bg-white/5 transition-colors"
+                    >
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 mt-0.5 shrink-0 flex items-center justify-center transition-all ${
+                          selectedWeight === "light"
+                            ? "border-[#fed766]"
+                            : "border-gray-300 dark:border-neutral-600"
+                        }`}
+                      >
+                        {selectedWeight === "light" && (
+                          <div className="w-2.5 h-2.5 rounded-full bg-[#fed766]" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-[14px] sm:text-[15px] font-bold text-gray-900 dark:text-white leading-tight">
+                          Lightweight (&lt; 5kg)
+                        </h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                          E.g Documents, smartphone, shoes, or makeup kits.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Weight Option 2 */}
+                    <div
+                      onClick={() => setSelectedWeight("medium")}
+                      className="p-4 flex items-start gap-3.5 cursor-pointer hover:bg-gray-50/80 dark:hover:bg-white/5 transition-colors"
+                    >
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 mt-0.5 shrink-0 flex items-center justify-center transition-all ${
+                          selectedWeight === "medium"
+                            ? "border-[#fed766]"
+                            : "border-gray-300 dark:border-neutral-600"
+                        }`}
+                      >
+                        {selectedWeight === "medium" && (
+                          <div className="w-2.5 h-2.5 rounded-full bg-[#fed766]" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-[14px] sm:text-[15px] font-bold text-gray-900 dark:text-white leading-tight">
+                          Medium Weight (6kg – 25kg)
+                        </h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                          E.g microwave, a desktop monitor, or box of clothes.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Weight Option 3 */}
+                    <div
+                      onClick={() => setSelectedWeight("heavy")}
+                      className="p-4 flex items-start gap-3.5 cursor-pointer hover:bg-gray-50/80 dark:hover:bg-white/5 transition-colors"
+                    >
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 mt-0.5 shrink-0 flex items-center justify-center transition-all ${
+                          selectedWeight === "heavy"
+                            ? "border-[#fed766]"
+                            : "border-gray-300 dark:border-neutral-600"
+                        }`}
+                      >
+                        {selectedWeight === "heavy" && (
+                          <div className="w-2.5 h-2.5 rounded-full bg-[#fed766]" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-[14px] sm:text-[15px] font-bold text-gray-900 dark:text-white leading-tight">
+                          Heavy Weight (&gt; 25kg)
+                        </h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                          E.g generator, TV, or large vehicle spare parts.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Fragile Item Toggle */}
+                <div className="flex items-center justify-between pt-1">
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 flex items-center justify-center text-red-500 shrink-0">
+                      <AlertOctagon className="w-5 h-5 stroke-[2.2]" />
+                    </div>
+                    <div>
+                      <h4 className="text-[15px] font-bold text-gray-950 dark:text-white leading-tight">
+                        Fragile Item
+                      </h4>
+                      <p className="text-xs italic text-gray-400 dark:text-gray-500 mt-0.5">
+                        Needs extra care during delivery
+                      </p>
+                    </div>
+                  </div>
+
                   <button
                     type="button"
-                    onClick={() => setPackageName("")}
-                    className="absolute right-3.5 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors cursor-pointer"
-                    title="Clear input"
+                    role="switch"
+                    aria-checked={isFragile}
+                    onClick={() => setIsFragile(!isFragile)}
+                    className={`w-12 h-7 rounded-full transition-colors relative cursor-pointer p-0.5 shrink-0 ${
+                      isFragile ? "bg-[#fed766]" : "bg-gray-200 dark:bg-neutral-700"
+                    }`}
                   >
-                    <X className="w-4 h-4 stroke-[2]" />
+                    <div
+                      className={`w-6 h-6 rounded-full bg-white shadow-sm transform transition-transform ${
+                        isFragile ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
                   </button>
-                )}
+                </div>
+
+                {/* 5. Bottom Action Button */}
+                <div className="pt-4 pb-4">
+                  <button
+                    type="button"
+                    onClick={() => setScreen("destination")}
+                    className="w-full py-4 px-5 rounded-2xl bg-[#fed766] hover:bg-[#f5c400] active:scale-[0.99] text-gray-950 font-bold text-base transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer touch-manipulation"
+                  >
+                    <span>Choose Destination</span>
+                    <span className="text-lg leading-none">→</span>
+                  </button>
+                </div>
               </div>
             </div>
-
-            {/* Category Selection Section */}
-            <div>
-              <label className="block text-[17px] font-bold text-gray-950 dark:text-white mb-2.5 tracking-tight">
-                Category
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                {/* Electronics */}
+          ) : (
+            /* ========================================================================= */
+            /* SEND PACKAGE DETAILS SCREEN WITH PHOTO BANNER                             */
+            /* ========================================================================= */
+            <>
+              {/* Header Bar */}
+              <div className="px-5 sm:px-8 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-3 sm:pb-4 flex items-center justify-between bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-md sticky top-0 z-20 border-b border-gray-100 dark:border-white/5">
                 <button
                   type="button"
-                  onClick={() => setSelectedCategory("Electronics")}
-                  className={`py-3 px-3 rounded-2xl flex items-center justify-center gap-2 border font-medium text-xs sm:text-sm transition-all cursor-pointer ${
-                    selectedCategory === "Electronics"
-                      ? "bg-amber-400/15 dark:bg-[#FFCC00]/15 border-[#FFCC00] text-amber-900 dark:text-[#FFCC00] font-bold shadow-xs"
-                      : "bg-white dark:bg-[#161618] border-gray-200/90 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-white/20"
-                  }`}
+                  onClick={onBack}
+                  className="w-10 h-10 -ml-2 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-800 dark:text-white transition-colors cursor-pointer touch-manipulation"
+                  title="Go back"
                 >
-                  <Package className="w-4 h-4" />
-                  <span>Electronics</span>
+                  <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
                 </button>
 
-                {/* Documents */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategory("Documents")}
-                  className={`py-3 px-3 rounded-2xl flex items-center justify-center gap-2 border font-medium text-xs sm:text-sm transition-all cursor-pointer ${
-                    selectedCategory === "Documents"
-                      ? "bg-amber-400/15 dark:bg-[#FFCC00]/15 border-[#FFCC00] text-amber-900 dark:text-[#FFCC00] font-bold shadow-xs"
-                      : "bg-white dark:bg-[#161618] border-gray-200/90 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-white/20"
-                  }`}
-                >
-                  <FileText className="w-4 h-4" />
-                  <span>Documents</span>
-                </button>
+                <h1 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white tracking-tight">
+                  Package details
+                </h1>
 
-                {/* Clothes */}
                 <button
                   type="button"
-                  onClick={() => setSelectedCategory("Clothes")}
-                  className={`py-3 px-3 rounded-2xl flex items-center justify-center gap-2 border font-medium text-xs sm:text-sm transition-all cursor-pointer ${
-                    selectedCategory === "Clothes"
-                      ? "bg-amber-400/15 dark:bg-[#FFCC00]/15 border-[#FFCC00] text-amber-900 dark:text-[#FFCC00] font-bold shadow-xs"
-                      : "bg-white dark:bg-[#161618] border-gray-200/90 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-white/20"
-                  }`}
+                  onClick={onBack}
+                  className="w-10 h-10 rounded-full bg-gray-500/10 dark:bg-white/10 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-500/20 dark:hover:bg-white/15 transition-colors cursor-pointer"
+                  title="Close"
                 >
-                  <Shirt className="w-4 h-4" />
-                  <span>Clothes</span>
-                </button>
-
-                {/* Others */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategory("Others")}
-                  className={`py-3 px-3 rounded-2xl flex items-center justify-center gap-2 border font-medium text-xs sm:text-sm transition-all cursor-pointer ${
-                    selectedCategory === "Others"
-                      ? "bg-amber-400/15 dark:bg-[#FFCC00]/15 border-[#FFCC00] text-amber-900 dark:text-[#FFCC00] font-bold shadow-xs"
-                      : "bg-white dark:bg-[#161618] border-gray-200/90 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-white/20"
-                  }`}
-                >
-                  <Package className="w-4 h-4" />
-                  <span>Others</span>
+                  <X className="w-5 h-5 stroke-[2.2]" />
                 </button>
               </div>
-            </div>
 
-            {/* Weight Section */}
-            <div>
-              <label className="block text-[17px] font-bold text-gray-950 dark:text-white mb-2.5 tracking-tight">
-                Weight
-              </label>
-              <div className="rounded-2xl border border-gray-200/90 dark:border-white/10 overflow-hidden divide-y divide-gray-100 dark:divide-white/5 bg-white dark:bg-[#161618] shadow-2xs">
-                {/* Weight Option 1: Light */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedWeight("light")}
-                  className="w-full p-4 flex items-start gap-3.5 text-left cursor-pointer hover:bg-gray-50/80 dark:hover:bg-white/5 transition-colors"
-                >
-                  <div
-                    className={`w-5 h-5 rounded-full border-2 mt-0.5 shrink-0 flex items-center justify-center transition-all ${
-                      selectedWeight === "light"
-                        ? "border-[#FFCC00]"
-                        : "border-gray-300 dark:border-neutral-600"
-                    }`}
+              {/* Form Body */}
+              <div className="flex-1 px-5 sm:px-8 py-6 space-y-6">
+                {/* Package Image Card with Retake/Change Camera Action */}
+                <div className="relative w-full aspect-[16/9] sm:aspect-[21/9] rounded-[24px] overflow-hidden bg-neutral-900 border border-gray-200/60 dark:border-white/10 shadow-sm group">
+                  <img
+                    src={capturedImage?.previewUrl || defaultPixelPhoto}
+                    alt="Package"
+                    className="w-full h-full object-cover"
+                  />
+
+                  {/* Retake Camera Button Overlay */}
+                  <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCameraModalInitialMode("camera");
+                        setIsCameraModalOpen(true);
+                      }}
+                      className="px-4 py-2 rounded-full bg-white/90 text-gray-900 font-semibold text-xs flex items-center gap-2 shadow-lg backdrop-blur-md cursor-pointer hover:bg-white transition-all"
+                    >
+                      <Camera className="w-4 h-4" />
+                      <span>Retake Photo</span>
+                    </button>
+                  </div>
+
+                  {/* Top-Right Change Picture Badge */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCameraModalInitialMode("prompt");
+                      setIsCameraModalOpen(true);
+                    }}
+                    className="absolute top-3 right-3 px-3 py-1.5 rounded-full bg-black/50 hover:bg-black/75 backdrop-blur-md flex items-center gap-1.5 text-white/90 text-xs font-medium transition-colors cursor-pointer"
+                    title="Change picture"
                   >
-                    {selectedWeight === "light" && (
-                      <div className="w-2.5 h-2.5 rounded-full bg-[#FFCC00]" />
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Change</span>
+                  </button>
+                </div>
+
+                {/* Package name Section */}
+                <div>
+                  <label className="block text-[17px] font-bold text-gray-950 dark:text-white mb-2 tracking-tight">
+                    Package name
+                  </label>
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={packageName}
+                      onChange={(e) => setPackageName(e.target.value)}
+                      placeholder="Enter package name"
+                      className="w-full px-4 py-3.5 pr-10 rounded-2xl border border-gray-200/90 dark:border-white/10 bg-white dark:bg-[#161618] text-gray-900 dark:text-white font-medium text-[15px] placeholder:text-gray-400 focus:outline-none focus:border-[#FFCC00] focus:ring-2 focus:ring-[#FFCC00]/30 transition-all shadow-2xs"
+                    />
+                    {packageName && (
+                      <button
+                        type="button"
+                        onClick={() => setPackageName("")}
+                        className="absolute right-3.5 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors cursor-pointer"
+                        title="Clear input"
+                      >
+                        <X className="w-4 h-4 stroke-[2]" />
+                      </button>
                     )}
                   </div>
-                  <div>
-                    <h4 className="text-[14px] font-bold text-gray-900 dark:text-white leading-tight">
-                      Light Weight (&lt; 5kg)
-                    </h4>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                      E.g food, document, shoe, shirt or phones.
-                    </p>
-                  </div>
-                </button>
+                </div>
 
-                {/* Weight Option 2: Medium */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedWeight("medium")}
-                  className="w-full p-4 flex items-start gap-3.5 text-left cursor-pointer hover:bg-gray-50/80 dark:hover:bg-white/5 transition-colors"
-                >
-                  <div
-                    className={`w-5 h-5 rounded-full border-2 mt-0.5 shrink-0 flex items-center justify-center transition-all ${
-                      selectedWeight === "medium"
-                        ? "border-[#FFCC00]"
-                        : "border-gray-300 dark:border-neutral-600"
-                    }`}
-                  >
-                    {selectedWeight === "medium" && (
-                      <div className="w-2.5 h-2.5 rounded-full bg-[#FFCC00]" />
-                    )}
-                  </div>
-                  <div>
-                    <h4 className="text-[14px] font-bold text-gray-900 dark:text-white leading-tight">
-                      Medium Weight (5kg - 25kg)
-                    </h4>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                      E.g large bags, heavy carton, mini fridge.
-                    </p>
-                  </div>
-                </button>
+                {/* Category Selection Section */}
+                <div>
+                  <label className="block text-[17px] font-bold text-gray-950 dark:text-white mb-2.5 tracking-tight">
+                    Category
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {/* Electronics */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategory("Electronics")}
+                      className={`py-3 px-3 rounded-2xl flex items-center justify-center gap-2 border font-medium text-xs sm:text-sm transition-all cursor-pointer ${
+                        selectedCategory === "Electronics"
+                          ? "bg-amber-400/15 dark:bg-[#FFCC00]/15 border-[#FFCC00] text-amber-900 dark:text-[#FFCC00] font-bold shadow-xs"
+                          : "bg-white dark:bg-[#161618] border-gray-200/90 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-white/20"
+                      }`}
+                    >
+                      <Package className="w-4 h-4" />
+                      <span>Electronics</span>
+                    </button>
 
-                {/* Weight Option 3: Heavy */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedWeight("heavy")}
-                  className="w-full p-4 flex items-start gap-3.5 text-left cursor-pointer hover:bg-gray-50/80 dark:hover:bg-white/5 transition-colors"
-                >
-                  <div
-                    className={`w-5 h-5 rounded-full border-2 mt-0.5 shrink-0 flex items-center justify-center transition-all ${
-                      selectedWeight === "heavy"
-                        ? "border-[#FFCC00]"
-                        : "border-gray-300 dark:border-neutral-600"
-                    }`}
+                    {/* Documents */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategory("Documents")}
+                      className={`py-3 px-3 rounded-2xl flex items-center justify-center gap-2 border font-medium text-xs sm:text-sm transition-all cursor-pointer ${
+                        selectedCategory === "Documents"
+                          ? "bg-amber-400/15 dark:bg-[#FFCC00]/15 border-[#FFCC00] text-amber-900 dark:text-[#FFCC00] font-bold shadow-xs"
+                          : "bg-white dark:bg-[#161618] border-gray-200/90 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-white/20"
+                      }`}
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span>Documents</span>
+                    </button>
+
+                    {/* Clothes */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategory("Clothes")}
+                      className={`py-3 px-3 rounded-2xl flex items-center justify-center gap-2 border font-medium text-xs sm:text-sm transition-all cursor-pointer ${
+                        selectedCategory === "Clothes"
+                          ? "bg-amber-400/15 dark:bg-[#FFCC00]/15 border-[#FFCC00] text-amber-900 dark:text-[#FFCC00] font-bold shadow-xs"
+                          : "bg-white dark:bg-[#161618] border-gray-200/90 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-white/20"
+                      }`}
+                    >
+                      <Shirt className="w-4 h-4" />
+                      <span>Clothes</span>
+                    </button>
+
+                    {/* Others */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategory("Others")}
+                      className={`py-3 px-3 rounded-2xl flex items-center justify-center gap-2 border font-medium text-xs sm:text-sm transition-all cursor-pointer ${
+                        selectedCategory === "Others"
+                          ? "bg-amber-400/15 dark:bg-[#FFCC00]/15 border-[#FFCC00] text-amber-900 dark:text-[#FFCC00] font-bold shadow-xs"
+                          : "bg-white dark:bg-[#161618] border-gray-200/90 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-white/20"
+                      }`}
+                    >
+                      <Package className="w-4 h-4" />
+                      <span>Others</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Weight Section */}
+                <div>
+                  <label className="block text-[17px] font-bold text-gray-950 dark:text-white mb-2.5 tracking-tight">
+                    Weight
+                  </label>
+                  <div className="rounded-2xl border border-gray-200/90 dark:border-white/10 overflow-hidden divide-y divide-gray-100 dark:divide-white/5 bg-white dark:bg-[#161618] shadow-2xs">
+                    {/* Weight Option 1: Light */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedWeight("light")}
+                      className="w-full p-4 flex items-start gap-3.5 text-left cursor-pointer hover:bg-gray-50/80 dark:hover:bg-white/5 transition-colors"
+                    >
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 mt-0.5 shrink-0 flex items-center justify-center transition-all ${
+                          selectedWeight === "light"
+                            ? "border-[#FFCC00]"
+                            : "border-gray-300 dark:border-neutral-600"
+                        }`}
+                      >
+                        {selectedWeight === "light" && (
+                          <div className="w-2.5 h-2.5 rounded-full bg-[#FFCC00]" />
+                        )}
+                      </div>
+                      <div>
+                        <h4 className="text-[14px] font-bold text-gray-900 dark:text-white leading-tight">
+                          Light Weight (&lt; 5kg)
+                        </h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                          E.g food, document, shoe, shirt or phones.
+                        </p>
+                      </div>
+                    </button>
+
+                    {/* Weight Option 2: Medium */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedWeight("medium")}
+                      className="w-full p-4 flex items-start gap-3.5 text-left cursor-pointer hover:bg-gray-50/80 dark:hover:bg-white/5 transition-colors"
+                    >
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 mt-0.5 shrink-0 flex items-center justify-center transition-all ${
+                          selectedWeight === "medium"
+                            ? "border-[#FFCC00]"
+                            : "border-gray-300 dark:border-neutral-600"
+                        }`}
+                      >
+                        {selectedWeight === "medium" && (
+                          <div className="w-2.5 h-2.5 rounded-full bg-[#FFCC00]" />
+                        )}
+                      </div>
+                      <div>
+                        <h4 className="text-[14px] font-bold text-gray-900 dark:text-white leading-tight">
+                          Medium Weight (5kg - 25kg)
+                        </h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                          E.g large bags, heavy carton, mini fridge.
+                        </p>
+                      </div>
+                    </button>
+
+                    {/* Weight Option 3: Heavy */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedWeight("heavy")}
+                      className="w-full p-4 flex items-start gap-3.5 text-left cursor-pointer hover:bg-gray-50/80 dark:hover:bg-white/5 transition-colors"
+                    >
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 mt-0.5 shrink-0 flex items-center justify-center transition-all ${
+                          selectedWeight === "heavy"
+                            ? "border-[#FFCC00]"
+                            : "border-gray-300 dark:border-neutral-600"
+                        }`}
+                      >
+                        {selectedWeight === "heavy" && (
+                          <div className="w-2.5 h-2.5 rounded-full bg-[#FFCC00]" />
+                        )}
+                      </div>
+                      <div>
+                        <h4 className="text-[14px] font-bold text-gray-900 dark:text-white leading-tight">
+                          Heavy Weight (&gt; 25kg)
+                        </h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                          E.g generator, TV, or large vehicle spare parts.
+                        </p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Bottom Continue Action Button */}
+                <div className="pt-2 pb-6">
+                  <button
+                    type="button"
+                    onClick={() => setScreen("destination")}
+                    className="w-full py-4 px-5 rounded-2xl bg-[#FFCC00] hover:bg-[#f5c400] active:scale-[0.99] text-gray-950 font-bold text-base transition-all shadow-xs flex items-center justify-center cursor-pointer touch-manipulation"
                   >
-                    {selectedWeight === "heavy" && (
-                      <div className="w-2.5 h-2.5 rounded-full bg-[#FFCC00]" />
-                    )}
-                  </div>
-                  <div>
-                    <h4 className="text-[14px] font-bold text-gray-900 dark:text-white leading-tight">
-                      Heavy Weight (&gt; 25kg)
-                    </h4>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                      E.g generator, TV, or large vehicle spare parts.
-                    </p>
-                  </div>
-                </button>
+                    <span>Continue</span>
+                  </button>
+                </div>
               </div>
-            </div>
-
-            {/* Bottom Continue Action Button */}
-            <div className="pt-2 pb-6">
-              <button
-                type="button"
-                onClick={() => setScreen("destination")}
-                className="w-full py-4 px-5 rounded-2xl bg-[#FFCC00] hover:bg-[#f5c400] active:scale-[0.99] text-gray-950 font-bold text-base transition-all shadow-xs flex items-center justify-center cursor-pointer touch-manipulation"
-              >
-                <span>Continue</span>
-              </button>
-            </div>
-          </div>
+            </>
+          )}
         </div>
       )}
 
@@ -992,7 +1257,7 @@ export default function SendPackageFlow({
                         className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-yellow-400 hover:text-amber-700 dark:hover:text-yellow-300 mt-1 cursor-pointer transition-all"
                       >
                         <span className="underline underline-offset-2">Tap below or add new location</span>
-                        <span className="text-[10px] font-bold bg-amber-400/20 dark:bg-yellow-400/20 text-amber-900 dark:text-yellow-300 px-1.5 py-0.5 rounded-full">
+                        <span className="text-[10px] font-bold bg-yellow-400 text-black px-1.5 py-0.5 rounded-full shadow-2xs">
                           + Add
                         </span>
                       </button>
@@ -1609,13 +1874,13 @@ export default function SendPackageFlow({
               )}
             </div>
 
-            {/* Banner: "Earn by delivering packages" */}
-            <div className="w-full rounded-2xl overflow-hidden bg-[#1c1f26] p-4 sm:p-5 flex items-center gap-4 text-white shadow-sm relative">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-neutral-900 shrink-0">
+            {/* Banner: "Earn by delivering packages" (All Available Riders Ads Card) */}
+            <div className="w-full rounded-2xl overflow-hidden bg-[#181920] dark:bg-[#151518] p-4 sm:p-5 flex items-center gap-4 text-white shadow-sm relative border border-gray-100/10 dark:border-white/5">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 shrink-0 flex items-center justify-center relative overflow-hidden">
                 <img
-                  src={moovCourierBanner}
-                  alt="Delivery Courier"
-                  className="w-full h-full object-cover object-center"
+                  src={allRidersImage}
+                  alt="Dart Delivery Rider"
+                  className="w-full h-full object-contain object-bottom scale-110"
                 />
               </div>
               <div className="min-w-0 flex-1">
@@ -1623,7 +1888,7 @@ export default function SendPackageFlow({
                   Earn by delivering packages
                 </h3>
                 <p className="text-xs sm:text-[13px] text-gray-300 mt-1 leading-relaxed font-normal">
-                  Become a verified Moov rider and earn on your own schedule.
+                  Become a verified Dart rider and earn on your own schedule.
                 </p>
               </div>
             </div>
@@ -1815,28 +2080,30 @@ export default function SendPackageFlow({
             <div className="rounded-3xl border border-gray-200/90 dark:border-white/10 bg-white dark:bg-[#161618] p-5 sm:p-6 shadow-2xs space-y-4">
               <div className="flex items-center gap-4">
                 <img
-                  src={capturedImage?.previewUrl || defaultPixelPhoto}
+                  src={capturedImage?.previewUrl || (mode === "pickup" ? iphone12Photo : defaultPixelPhoto)}
                   alt={packageName}
                   className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl object-cover ring-1 ring-gray-200 dark:ring-white/10 shrink-0"
                 />
                 <div className="min-w-0 flex-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500 dark:text-yellow-400 bg-amber-50 dark:bg-yellow-400/10 px-2 py-0.5 rounded-full inline-block mb-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-black bg-yellow-400 px-2.5 py-0.5 rounded-full inline-block mb-1 shadow-2xs">
                     {selectedCategory}
                   </span>
                   <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate">
                     {packageName}
                   </h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    Weight: {selectedWeight ? `${selectedWeight} weight` : "Light (< 5kg)"}
+                    Weight: {selectedWeight === "light" ? "Lightweight (< 5kg)" : selectedWeight === "medium" ? "Medium Weight (6kg – 25kg)" : selectedWeight === "heavy" ? "Heavy Weight (> 25kg)" : "Lightweight (< 5kg)"}
                   </p>
                 </div>
               </div>
 
               {/* Fragile Note */}
-              <div className="p-3 bg-amber-50 dark:bg-white/5 rounded-xl border border-amber-200/60 dark:border-white/10 flex items-start gap-2.5 text-xs text-amber-900 dark:text-yellow-300">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-yellow-400" />
-                <span>Note: this Item was labelled as sensitive and fragile</span>
-              </div>
+              {(isFragile || mode === "send") && (
+                <div className="p-3 bg-amber-50 dark:bg-white/5 rounded-xl border border-amber-200/60 dark:border-white/10 flex items-start gap-2.5 text-xs text-amber-900 dark:text-yellow-300">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-yellow-400" />
+                  <span>Note: this Item was labelled as sensitive and fragile</span>
+                </div>
+              )}
             </div>
 
             {/* Route Summary */}
@@ -2324,7 +2591,11 @@ export default function SendPackageFlow({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setScreen("payment_method");
+                    if (initialScreen === "package_status") {
+                      onBack();
+                    } else {
+                      setScreen("payment_method");
+                    }
                   }}
                   className="w-10 h-10 flex items-center justify-center rounded-full text-white hover:bg-white/10 transition-colors cursor-pointer touch-manipulation"
                   title="Go back"
@@ -2375,9 +2646,7 @@ export default function SendPackageFlow({
                   className={`px-3 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase shrink-0 ${
                     isCancelled
                       ? "bg-red-500 text-white"
-                      : isRiderAccepted
-                      ? "bg-[#FF6B00] text-white"
-                      : "bg-[#FFCC00] text-gray-950 shadow-xs"
+                      : "bg-yellow-400 text-black shadow-xs"
                   }`}
                 >
                   {isCancelled ? "CANCELLED" : isRiderAccepted ? "IN-TRANSIT" : "PENDING"}
@@ -2386,7 +2655,7 @@ export default function SendPackageFlow({
             </div>
 
             {/* White / Dark Card Body */}
-            <div className="flex-1 bg-white dark:bg-[#161618] rounded-none mt-0 pt-6 pb-12 px-6 sm:px-8 relative z-10 shadow-sm flex flex-col justify-between transition-colors">
+            <div className="flex-1 bg-white dark:bg-[#161618] rounded-none mt-0 pt-6 pb-12 px-4 sm:px-8 relative z-10 shadow-sm flex flex-col justify-between transition-colors">
               <div>
                 {/* Condition: Rider Accepted / IN-TRANSIT (Matches Image 1 and Image 2) */}
                 {isRiderAccepted ? (
@@ -3027,16 +3296,12 @@ export default function SendPackageFlow({
       {screen === "success" && (() => {
         return (
           <div className="w-full flex-1 h-full min-h-full overflow-y-auto bg-white dark:bg-[#0c0c0e] rounded-none m-0 shadow-none relative select-none">
-            {/* User's Exact Confetti Asset (Raised up to frame the badge) */}
-            <div className="absolute inset-x-0 -top-6 sm:-top-8 h-72 sm:h-80 pointer-events-none overflow-hidden z-0 flex items-start justify-center">
-              <img
-                src={celebrationConfetti}
-                alt="Celebration Confetti"
-                className="w-full max-w-2xl h-full object-cover sm:object-contain object-top opacity-95 scale-105"
-              />
+            {/* Celebration Confetti in upper half (Hardcoded Static SVG, Not Animated) */}
+            <div className="absolute inset-x-0 top-0 h-64 sm:h-72 pointer-events-none overflow-hidden z-0 flex items-start justify-center">
+              <ConfettiBackground className="w-full max-w-2xl h-full opacity-90" />
             </div>
 
-            <div className="w-full min-h-full flex flex-col justify-between px-6 sm:px-10 pt-6 sm:pt-8 pb-24 sm:pb-28 relative z-10 animate-in fade-in duration-300">
+            <div className="w-full min-h-full flex flex-col justify-between px-4 sm:px-10 pt-5 sm:pt-8 pb-20 sm:pb-28 relative z-10 animate-in fade-in duration-300">
               {/* Top Center: Scalloped Green Badge, Pill, Title & Subtitle */}
               <div className="flex flex-col items-center text-center pt-4 sm:pt-8 shrink-0">
                 {/* Large Green Scalloped Badge with Checkmark (User's Exact Asset) */}
@@ -3081,11 +3346,11 @@ export default function SendPackageFlow({
                 {/* Courier Experience Card */}
                 <div className="w-full bg-[#18191d] dark:bg-[#1c1d22] text-white p-4 sm:p-4.5 rounded-2xl flex items-center gap-3.5 sm:gap-4 shadow-md">
                   {/* Courier with yellow helmet & vest */}
-                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden shrink-0 bg-[#252830] border border-white/10 flex items-center justify-center">
+                  <div className="w-16 h-16 sm:w-18 sm:h-18 overflow-hidden shrink-0 flex items-center justify-center">
                     <img
                       src={courierRatingAvatar}
                       alt="Dart Courier"
-                      className="w-full h-full object-cover object-top"
+                      className="w-full h-full object-contain object-bottom"
                     />
                   </div>
                   <div className="min-w-0 flex-1">

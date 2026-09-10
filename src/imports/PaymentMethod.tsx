@@ -136,7 +136,7 @@ export default function PaymentMethod({ onBack }: PaymentMethodProps) {
   return (
     <div className="w-full flex-1 flex flex-col min-h-full bg-transparent relative pb-12 transition-colors">
       {/* Top Header */}
-      <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-white/5 sticky top-0 bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-sm z-10">
+      <div className="px-4 sm:px-6 py-3.5 flex items-center justify-between border-b border-gray-100 dark:border-white/5 sticky top-0 bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-sm z-10">
         <button
           onClick={onBack}
           className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/5 text-gray-800 dark:text-white transition-colors cursor-pointer"
@@ -157,7 +157,7 @@ export default function PaymentMethod({ onBack }: PaymentMethodProps) {
         </button>
       </div>
 
-      <div className="flex-1 px-6 sm:px-10 py-6 max-w-xl mx-auto w-full flex flex-col justify-between">
+      <div className="flex-1 px-3.5 sm:px-8 py-5 sm:py-6 max-w-xl mx-auto w-full flex flex-col justify-between">
         <div className="flex flex-col gap-4">
           
           {/* Toast Notification */}
@@ -191,7 +191,7 @@ export default function PaymentMethod({ onBack }: PaymentMethodProps) {
                       <div
                         className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
                           method.type === "wallet"
-                            ? "bg-amber-400/20 text-amber-700 dark:text-amber-400"
+                            ? "bg-yellow-400 text-black"
                             : method.type === "card"
                             ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400"
                             : "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
@@ -292,7 +292,7 @@ export default function PaymentMethod({ onBack }: PaymentMethodProps) {
             {/* Header */}
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-amber-400/20 flex items-center justify-center text-amber-700 dark:text-amber-400">
+                <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center text-black shadow-2xs">
                   <CreditCard className="w-4 h-4" />
                 </div>
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">

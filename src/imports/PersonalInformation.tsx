@@ -132,7 +132,7 @@ export default function PersonalInformation({ onBack, onSave }: PersonalInformat
                 </div>
                 <button
                   onClick={() => startEdit("email")}
-                  className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-amber-50 dark:bg-amber-400/10 hover:bg-amber-100 dark:hover:bg-amber-400/20 text-amber-700 dark:text-amber-300 font-semibold text-xs transition-colors shrink-0 cursor-pointer touch-manipulation"
+                  className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold text-xs transition-colors shrink-0 cursor-pointer touch-manipulation shadow-2xs"
                 >
                   Update
                 </button>
@@ -153,7 +153,7 @@ export default function PersonalInformation({ onBack, onSave }: PersonalInformat
                 </div>
                 <button
                   onClick={() => startEdit("phone")}
-                  className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-amber-50 dark:bg-amber-400/10 hover:bg-amber-100 dark:hover:bg-amber-400/20 text-amber-700 dark:text-amber-300 font-semibold text-xs transition-colors shrink-0 cursor-pointer touch-manipulation"
+                  className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold text-xs transition-colors shrink-0 cursor-pointer touch-manipulation shadow-2xs"
                 >
                   Update
                 </button>
@@ -174,7 +174,7 @@ export default function PersonalInformation({ onBack, onSave }: PersonalInformat
                 </div>
                 <button
                   onClick={() => startEdit("dob")}
-                  className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-amber-50 dark:bg-amber-400/10 hover:bg-amber-100 dark:hover:bg-amber-400/20 text-amber-700 dark:text-amber-300 font-semibold text-xs transition-colors shrink-0 cursor-pointer touch-manipulation"
+                  className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold text-xs transition-colors shrink-0 cursor-pointer touch-manipulation shadow-2xs"
                 >
                   Update
                 </button>
@@ -199,7 +199,7 @@ export default function PersonalInformation({ onBack, onSave }: PersonalInformat
                 </div>
                 <button
                   onClick={() => startEdit("gender")}
-                  className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-amber-50 dark:bg-amber-400/10 hover:bg-amber-100 dark:hover:bg-amber-400/20 text-amber-700 dark:text-amber-300 font-semibold text-xs transition-colors shrink-0 cursor-pointer touch-manipulation"
+                  className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold text-xs transition-colors shrink-0 cursor-pointer touch-manipulation shadow-2xs"
                 >
                   Change
                 </button>

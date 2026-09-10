@@ -95,7 +95,7 @@ export default function AuthLayout({ children, hideTopBar = false }: AuthLayoutP
         {/* Top Branding */}
         <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <DartLogo variant="light" className="h-10 w-auto" />
+            <DartLogo variant="light" className="h-12 lg:h-14 w-auto" />
             <span className="text-[10px] uppercase tracking-wider text-yellow-400 font-semibold bg-yellow-400/10 px-2.5 py-0.5 rounded-full border border-yellow-400/20">
               Logistics
             </span>
@@ -188,7 +188,7 @@ export default function AuthLayout({ children, hideTopBar = false }: AuthLayoutP
           <div className="w-full flex items-center justify-between px-5 sm:px-6 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-3 sm:pb-4 shrink-0">
             {/* Mobile Logo */}
             <div className="flex md:hidden items-center">
-              <DartLogo variant="auto" className="h-8 w-auto" />
+              <DartLogo variant="auto" className="h-11 sm:h-12 w-auto" />
             </div>
 
             <div className="hidden md:block"></div>

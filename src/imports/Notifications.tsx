@@ -99,8 +99,8 @@ export default function Notifications({
         <div className={`flex items-center justify-between border-b border-gray-100 dark:border-white/5 bg-white dark:bg-[#161618] sticky top-0 z-10 ${embedded ? "px-5 py-4" : "px-4 py-4"}`}>
           {embedded ? (
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-yellow-400/15 flex items-center justify-center">
-                <Bell className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+              <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center text-black shadow-2xs">
+                <Bell className="w-4 h-4" />
               </div>
               <h2 className="font-semibold text-gray-900 dark:text-white text-base">Notifications</h2>
               {unreadCount > 0 && (
@@ -175,7 +175,7 @@ export default function Notifications({
         </div>
 
         {/* Tabs */}
-        <div className={`flex items-center gap-1.5 border-b border-gray-50 dark:border-white/5 ${embedded ? "px-5 py-3" : "px-6 py-3"}`}>
+        <div className={`flex items-center gap-1.5 border-b border-gray-50 dark:border-white/5 ${embedded ? "px-5 py-3" : "px-3.5 sm:px-6 py-3"}`}>
           {(["All", "Delivery", "System"] as Tab[]).map((tab) => (
             <button
               key={tab}
@@ -200,12 +200,12 @@ export default function Notifications({
         </div>
 
         {/* Content */}
-        <div className={`flex-1 overflow-y-auto pb-6 relative ${embedded ? "px-5 pt-4" : "px-6 pt-4"}`}>
+        <div className={`flex-1 overflow-y-auto pb-6 relative ${embedded ? "px-5 pt-4" : "px-3.5 sm:px-6 pt-4"}`}>
           
           {filteredNotifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-16 opacity-70 text-center">
-              <div className="w-16 h-16 bg-yellow-100 dark:bg-yellow-400/10 rounded-full flex items-center justify-center mb-3">
-                 <Bell className="w-7 h-7 text-yellow-600 dark:text-yellow-400" />
+              <div className="w-16 h-16 bg-yellow-400 rounded-full flex items-center justify-center mb-3 text-black shadow-xs">
+                 <Bell className="w-7 h-7" />
               </div>
               <h3 className="text-base font-bold text-gray-800 dark:text-white mb-1">You're all caught up</h3>
               <p className="text-xs text-gray-500 dark:text-gray-400 max-w-[220px]">
@@ -269,7 +269,7 @@ export default function Notifications({
                       >
                         <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
                           item.icon === "wallet"
-                            ? "bg-yellow-100 dark:bg-yellow-400/20 text-yellow-600 dark:text-yellow-400"
+                            ? "bg-yellow-400 text-black shadow-2xs"
                             : "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
                         }`}>
                           {item.icon === "wallet" ? <Wallet className="w-4 h-4" /> : <Package className="w-4 h-4" />}
