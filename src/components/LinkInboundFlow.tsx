@@ -20,7 +20,12 @@ import {
   ZapOff,
   RefreshCw,
   Scan,
-  CheckCircle2
+  CheckCircle2,
+  Package,
+  Tag,
+  ShoppingBag,
+  Store,
+  Sparkles
 } from "lucide-react";
 import ConfettiBackground from "./ConfettiBackground";
 import courierRatingAvatar from "../assets/courier_rating_avatar.png";
@@ -28,38 +33,60 @@ import dropOffBoxGoodMark from "../assets/Good-box.svg";
 import loadingBoxSvg from "../assets/loading-box.svg";
 import linkedBoxSvg from "../assets/Linked-box.svg";
 import PackageStateIcon from "./PackageStateIcon";
+import {
+  cleanTrackingText,
+  detectCourier,
+  formatTrackingTime,
+  deriveStatusFromAction,
+} from "../utils/tracking";
 
 export interface InboundPackageItem {
   id: string;
   trackingId: string;
   title: string;
+  store?: string;
   category: string;
   courier: string;
   shippedDate: string;
   estimatedArrival: string;
   fromLocation: string;
   toLocation: string;
-  status: "In-Transit" | "Pending" | "Delivered";
+  status: "In-Transit" | "Pending" | "Delivered" | "Cancelled";
+  tracks?: any[];
+  payUrl?: string;
+  latestActionName?: string;
+  latestTime?: string;
 }
 
 interface LinkInboundFlowProps {
   onBack: () => void;
   onComplete: (pkg: InboundPackageItem) => void;
+  initialTrackingId?: string;
 }
 
 const RECENT_IDS = [
+  { id: "NG021358672334", time: "Live SpeedAF / Inbound" },
   { id: "MV-2312XCP", time: "Added yesterday" },
   { id: "MV-3412XCP", time: "Added 2 days ago" },
   { id: "MV-5332XCP", time: "Added 3 days ago" },
-  { id: "MV-1312XCP", time: "Added 5 days ago" },
 ];
 
-export default function LinkInboundFlow({ onBack, onComplete }: LinkInboundFlowProps) {
-  const [step, setStep] = useState<"input" | "scanner" | "searching" | "details" | "success">("input");
-  const [trackingInput, setTrackingInput] = useState("");
+export default function LinkInboundFlow({ onBack, onComplete, initialTrackingId }: LinkInboundFlowProps) {
+  const [step, setStep] = useState<"input" | "scanner" | "searching" | "found" | "details" | "success">(
+    initialTrackingId ? "searching" : "input"
+  );
+  const [trackingInput, setTrackingInput] = useState(initialTrackingId || "");
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [isCopiedNotice, setIsCopiedNotice] = useState(false);
   const [isAddedSuccess, setIsAddedSuccess] = useState(false);
+  const [apiRawTracks, setApiRawTracks] = useState<any[]>([]);
+  const [payUrl, setPayUrl] = useState<string>("");
+  const [apiNotice, setApiNotice] = useState<string | null>(null);
+
+  // Package naming & store origin modal state
+  const [isNameModalOpen, setIsNameModalOpen] = useState(false);
+  const [customPackageName, setCustomPackageName] = useState("");
+  const [customOrderedFrom, setCustomOrderedFrom] = useState("");
 
   // Camera & Scanner State
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
@@ -75,13 +102,13 @@ export default function LinkInboundFlow({ onBack, onComplete }: LinkInboundFlowP
   // Selected or active package details
   const [packageDetails, setPackageDetails] = useState<InboundPackageItem>({
     id: "inbound-" + Date.now(),
-    trackingId: "NGS213-2324-23243",
-    title: "Black Hoodie XXL",
-    category: "CLOTHES",
-    courier: "AliExpress",
-    shippedDate: "Jun 28th 2026",
-    estimatedArrival: "Jul 30th 2026",
-    fromLocation: "China, Beijing",
+    trackingId: initialTrackingId || "NGS213-2324-23243",
+    title: "Inbound Package",
+    category: "GENERAL",
+    courier: "Dart Express",
+    shippedDate: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+    estimatedArrival: new Date(Date.now() + 5 * 24 * 3600 * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+    fromLocation: "Regional Distribution Hub",
     toLocation: "Akpakpava, Benin",
     status: "In-Transit",
   });
@@ -197,25 +224,110 @@ export default function LinkInboundFlow({ onBack, onComplete }: LinkInboundFlowP
     }
   };
 
-  // Handle Search Submission & Auto Transition
-  const startSearch = (code?: string) => {
+  // Handle Search Submission & Live Query from http://localhost:3000/api/track/
+  const startSearch = async (code?: string) => {
     const idToSearch = (code || trackingInput || "NGS213-2324-23243").trim();
-    setPackageDetails((prev) => ({
-      ...prev,
-      trackingId: idToSearch,
-    }));
     setStep("searching");
+    setApiNotice(null);
+
+    const startTime = Date.now();
+
+    try {
+      // Direct call to http://localhost:3000/api/track/
+      const res = await fetch(`http://localhost:3000/api/track/${encodeURIComponent(idToSearch)}`);
+      if (!res.ok) {
+        throw new Error(`HTTP error ${res.status}`);
+      }
+      const data = await res.json();
+
+      // Ensure searching loading animation lasts until after the package info is fetched,
+      // with a minimum smooth time of 1000ms to avoid abrupt flickers
+      const elapsed = Date.now() - startTime;
+      const minLoadingRemaining = Math.max(0, 1000 - elapsed);
+      if (minLoadingRemaining > 0) {
+        await new Promise((resolve) => setTimeout(resolve, minLoadingRemaining));
+      }
+
+      if (data?.success && Array.isArray(data.data) && data.data.length > 0) {
+        const item = data.data[0];
+        const tracks = Array.isArray(item.tracks) ? item.tracks : [];
+        setApiRawTracks(tracks);
+        setPayUrl(item.payUrl || "");
+
+        // tracks[0] is the latest event, tracks[tracks.length - 1] is the earliest event
+        const latestTrack = tracks.length > 0 ? tracks[0] : null;
+        const earliestTrack = tracks.length > 0 ? tracks[tracks.length - 1] : null;
+        const todayStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+        const derivedStatus = deriveStatusFromAction(latestTrack?.actionName);
+        const courierName = item.courier || detectCourier(item.mailNo || idToSearch);
+        const originDesc = cleanTrackingText(earliestTrack?.msgEng || earliestTrack?.actionName) || (latestTrack?.receiverCountryCode ? `Origin Terminal (${latestTrack.receiverCountryCode})` : "International Sorting Center");
+        const currentDesc = cleanTrackingText(latestTrack?.msgEng || latestTrack?.actionName) || "Central Distribution Hub";
+        const shippedFormatted = earliestTrack?.time ? formatTrackingTime(earliestTrack.time) : todayStr;
+        const lastScanFormatted = latestTrack?.time ? formatTrackingTime(latestTrack.time) : todayStr;
+
+        const eventTitle = latestTrack?.actionName 
+          ? `${latestTrack.actionName} - ${item.mailNo || idToSearch}`
+          : `Inbound Package (${item.mailNo || idToSearch})`;
+
+        setPackageDetails({
+          id: "inbound-" + Date.now(),
+          trackingId: item.mailNo || idToSearch,
+          title: item.title || eventTitle,
+          category: item.category || (idToSearch.toLowerCase().includes("doc") ? "DOCUMENTS" : "GENERAL"),
+          courier: courierName,
+          shippedDate: shippedFormatted,
+          estimatedArrival: lastScanFormatted,
+          fromLocation: item.origin || originDesc,
+          toLocation: item.destination || currentDesc,
+          status: derivedStatus,
+          tracks: tracks,
+          payUrl: item.payUrl || "",
+          latestActionName: latestTrack?.actionName,
+          latestTime: latestTrack?.time,
+        });
+
+        // Package information has been fetched -> show "Package found" state before details!
+        setStep("found");
+        setTimeout(() => {
+          setStep("details");
+        }, 1100);
+      } else {
+        setPackageDetails((prev) => ({
+          ...prev,
+          trackingId: idToSearch,
+          title: `Inbound Package (${idToSearch})`,
+        }));
+        setStep("found");
+        setTimeout(() => {
+          setStep("details");
+        }, 1100);
+      }
+    } catch (err: any) {
+      console.warn("Could not query http://localhost:3000/api/track/ - proceeding with local template:", err);
+      const elapsed = Date.now() - startTime;
+      const minLoadingRemaining = Math.max(0, 1000 - elapsed);
+      if (minLoadingRemaining > 0) {
+        await new Promise((resolve) => setTimeout(resolve, minLoadingRemaining));
+      }
+      setApiNotice("Live server lookup unreachable, package linked with specified ID");
+      setPackageDetails((prev) => ({
+        ...prev,
+        trackingId: idToSearch,
+        title: `Inbound Package (${idToSearch})`,
+      }));
+      setStep("found");
+      setTimeout(() => {
+        setStep("details");
+      }, 1100);
+    }
   };
 
-  // Simulate server lookup when entering searching state
   useEffect(() => {
-    if (step === "searching") {
-      const timer = setTimeout(() => {
-        setStep("details");
-      }, 1600);
-      return () => clearTimeout(timer);
+    if (initialTrackingId) {
+      startSearch(initialTrackingId);
     }
-  }, [step]);
+  }, [initialTrackingId]);
 
   // Clipboard Paste handler
   const handlePaste = async () => {
@@ -237,8 +349,39 @@ export default function LinkInboundFlow({ onBack, onComplete }: LinkInboundFlowP
     setTimeout(() => setIsCopiedNotice(false), 1500);
   };
 
-  // Handle finalize addition -> show celebration success screen
+  // Handle finalize addition -> prompt user for name & where ordered
   const handleAddPackage = () => {
+    // If not customized yet, initialize inputs from current details
+    if (!customPackageName) {
+      if (packageDetails.title && !packageDetails.title.startsWith("Inbound Package")) {
+        setCustomPackageName(packageDetails.title);
+      }
+    }
+    if (!customOrderedFrom && packageDetails.store) {
+      setCustomOrderedFrom(packageDetails.store);
+    }
+    setIsNameModalOpen(true);
+  };
+
+  // Confirm custom name & store and proceed to success
+  const handleConfirmNameAndSave = () => {
+    const finalTitle = customPackageName.trim() || packageDetails.title || "Inbound Package";
+    const finalStore = customOrderedFrom.trim() || packageDetails.store || "";
+
+    setPackageDetails((prev) => ({
+      ...prev,
+      title: finalTitle,
+      store: finalStore,
+    }));
+    setIsNameModalOpen(false);
+    setIsAddedSuccess(true);
+    setStep("success");
+  };
+
+  // Skip naming and proceed with defaults
+  const handleSkipNaming = () => {
+    setIsNameModalOpen(false);
+    setIsAddedSuccess(true);
     setStep("success");
   };
 
@@ -442,6 +585,40 @@ export default function LinkInboundFlow({ onBack, onComplete }: LinkInboundFlowP
   }
 
   // ----------------------------------------------------
+  // SCREEN: PACKAGE FOUND NOTIFICATION STATE
+  // ----------------------------------------------------
+  if (step === "found") {
+    return (
+      <div className="w-full min-h-[92dvh] flex flex-col items-center justify-center px-4 bg-white dark:bg-[#0c0c0e] text-center select-none animate-in fade-in zoom-in-95 duration-300">
+        <div className="relative w-44 h-44 sm:w-52 sm:h-52 flex items-center justify-center">
+          {/* Animated Glow Halo */}
+          <div className="absolute inset-0 bg-emerald-500/15 dark:bg-emerald-500/10 rounded-full blur-2xl animate-pulse" />
+
+          {/* Package Found Graphic with Checkmark */}
+          <img
+            src={dropOffBoxGoodMark}
+            alt="Package Found"
+            className="w-36 h-36 sm:w-44 sm:h-44 object-contain drop-shadow-md select-none relative z-10 animate-in zoom-in-90 duration-300"
+          />
+        </div>
+
+        {/* Status Pill */}
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider mt-6 mb-2">
+          <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.5]" />
+          <span>Package Found</span>
+        </div>
+
+        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+          {packageDetails.latestActionName || "Shipment Located"}
+        </h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs leading-relaxed mt-1">
+          {packageDetails.courier} • <span className="font-mono font-medium">{packageDetails.trackingId}</span>
+        </p>
+      </div>
+    );
+  }
+
+  // ----------------------------------------------------
   // SCREEN 3: PACKAGE DETAILS (Review & Add)
   // ----------------------------------------------------
   if (step === "details") {
@@ -489,10 +666,24 @@ export default function LinkInboundFlow({ onBack, onComplete }: LinkInboundFlowP
             </div>
 
             <div className="min-w-0 flex-1">
-              {/* Category Ticker in Complete Dart Yellow with Black Text */}
-              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-yellow-400 text-black text-[11px] font-bold uppercase tracking-wider mb-1.5 shadow-2xs">
-                <Shirt className="w-3.5 h-3.5 stroke-[2.2]" />
-                <span>{packageDetails.category}</span>
+              {/* Category & Live Status Badge */}
+              <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-yellow-400 text-black text-[11px] font-bold uppercase tracking-wider shadow-2xs">
+                  <Package className="w-3.5 h-3.5 stroke-[2.2]" />
+                  <span>{packageDetails.category}</span>
+                </span>
+                {packageDetails.store && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-yellow-50 dark:bg-yellow-400/10 text-yellow-800 dark:text-yellow-300 text-[10px] font-bold uppercase tracking-wider border border-yellow-200/60 dark:border-yellow-400/20">
+                    From {packageDetails.store}
+                  </span>
+                )}
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                  packageDetails.status === "Delivered"
+                    ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400"
+                    : "bg-yellow-100 dark:bg-yellow-400/20 text-yellow-800 dark:text-yellow-400"
+                }`}>
+                  {packageDetails.latestActionName || packageDetails.status}
+                </span>
               </div>
               <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white truncate">
                 {packageDetails.title}
@@ -510,9 +701,11 @@ export default function LinkInboundFlow({ onBack, onComplete }: LinkInboundFlowP
               <div className="flex items-start gap-3.5">
                 <div className="w-5 h-5 rounded-full bg-yellow-400 border-2 border-yellow-500 dark:border-yellow-300 shrink-0 mt-0.5 shadow-2xs" />
                 <div className="min-w-0 flex-1">
-                  <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 block">
-                    INBOUND FROM
-                  </span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 block">
+                      INBOUND ORIGIN
+                    </span>
+                  </div>
                   <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mt-0.5">
                     {packageDetails.fromLocation}
                   </p>
@@ -522,15 +715,17 @@ export default function LinkInboundFlow({ onBack, onComplete }: LinkInboundFlowP
               {/* Connecting Vertical Dashed Line */}
               <div className="absolute left-2.5 top-5 bottom-5 w-px border-l-2 border-dashed border-gray-300 dark:border-gray-700 -translate-x-1/2" />
 
-              {/* Destination Node */}
+              {/* Destination / Current Node */}
               <div className="flex items-start gap-3.5">
                 <div className="w-5 h-5 flex items-center justify-center text-red-500 shrink-0 mt-0.5">
                   <MapPin className="w-5 h-5 fill-red-500/20 stroke-red-500" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 block">
-                    DROP-OFF LOCATION
-                  </span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-yellow-600 dark:text-yellow-400 block">
+                      CURRENT STATION / DROP-OFF
+                    </span>
+                  </div>
                   <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mt-0.5">
                     {packageDetails.toLocation}
                   </p>
@@ -567,19 +762,88 @@ export default function LinkInboundFlow({ onBack, onComplete }: LinkInboundFlowP
               </span>
             </div>
 
-            {/* Estimated Arrival */}
+            {/* Last Scanned / Status Time */}
             <div className="flex items-center justify-between p-4 sm:p-4.5">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-600 dark:text-gray-300 shrink-0">
                   <Clock className="w-4.5 h-4.5" />
                 </div>
-                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Estimated Arrival</span>
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Last Scanned</span>
               </div>
               <span className="text-sm font-semibold text-gray-900 dark:text-white">
                 {packageDetails.estimatedArrival}
               </span>
             </div>
           </div>
+
+          {/* Pay Customs / Duty URL Notice from API if available */}
+          {payUrl && (
+            <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-xs">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wide">
+                  Customs / Duty Pending
+                </p>
+                <p className="text-xs text-amber-700 dark:text-amber-400/90 mt-0.5 truncate">
+                  Online duty payment available for this package
+                </p>
+              </div>
+              <a 
+                href={payUrl} 
+                target="_blank" 
+                rel="noreferrer"
+                className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold text-xs transition-all shrink-0 shadow-xs"
+              >
+                Pay Now
+              </a>
+            </div>
+          )}
+
+          {/* Real-time Tracking Events from API */}
+          {apiRawTracks && apiRawTracks.length > 0 && (
+            <div className="bg-white dark:bg-[#18181b] border border-gray-100 dark:border-white/5 rounded-2xl p-4 sm:p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                  Tracking Updates ({apiRawTracks.length})
+                </h4>
+                <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-0.5 rounded-full">
+                  Live API
+                </span>
+              </div>
+              <div className="flex flex-col gap-4">
+                {apiRawTracks.map((tr, idx) => {
+                  const eventTitle = tr.actionName || tr.context || tr.description || tr.status || "Status Update";
+                  const eventDetail = tr.msgEng ? tr.msgEng.replace(/\?/g, " ").trim() : (tr.message || "");
+                  return (
+                    <div key={idx} className="flex items-start gap-3 text-xs">
+                      <div className={`w-3 h-3 rounded-full mt-1 shrink-0 ${idx === 0 ? "bg-yellow-400 ring-4 ring-yellow-400/25 animate-pulse" : "bg-gray-300 dark:bg-gray-600"}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <p className="font-semibold text-sm text-gray-900 dark:text-white">
+                            {eventTitle}
+                          </p>
+                          {tr.time && (
+                            <span className="text-gray-400 dark:text-gray-500 text-[11px] shrink-0 font-mono">
+                              {tr.time}
+                            </span>
+                          )}
+                        </div>
+                        {eventDetail && eventDetail !== eventTitle && (
+                          <p className="text-gray-600 dark:text-gray-300 text-xs mt-1 leading-relaxed">
+                            {eventDetail}
+                          </p>
+                        )}
+                        {(tr.scanSource || tr.location) && (
+                          <span className="text-gray-400 dark:text-gray-500 text-[11px] block mt-1">
+                            {tr.location ? `📍 ${tr.location}` : ""} {tr.scanSource ? `• Source: ${tr.scanSource}` : ""}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex flex-col gap-3 pt-4 pb-6 mt-auto">
@@ -588,14 +852,8 @@ export default function LinkInboundFlow({ onBack, onComplete }: LinkInboundFlowP
               onClick={handleAddPackage}
               className="w-full py-4 rounded-2xl bg-yellow-400 hover:bg-yellow-500 active:scale-[0.99] text-black font-bold text-base transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer touch-manipulation"
             >
-              {isAddedSuccess ? (
-                <>
-                  <Check className="w-5 h-5 stroke-[2.5]" />
-                  <span>Added to My Packages</span>
-                </>
-              ) : (
-                <span>Added to My Packages</span>
-              )}
+              <Package className="w-5 h-5 stroke-[2.2]" />
+              <span>Add to My Packages</span>
             </button>
             <button
               type="button"
@@ -606,6 +864,191 @@ export default function LinkInboundFlow({ onBack, onComplete }: LinkInboundFlowP
             </button>
           </div>
         </div>
+
+        {/* ---------------------------------------------------- */}
+        {/* NAME YOUR PACKAGE & STORE MODAL                      */}
+        {/* ---------------------------------------------------- */}
+        {isNameModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            {/* Backdrop */}
+            <div
+              onClick={() => setIsNameModalOpen(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+            />
+
+            {/* Modal Container */}
+            <div
+              className="w-full sm:max-w-lg bg-white dark:bg-[#18181b] rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 border-t sm:border border-gray-100 dark:border-white/10 shadow-2xl relative z-10 animate-in slide-in-from-bottom duration-300 ease-out flex flex-col max-h-[92vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Drag handle for mobile view */}
+              <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full mx-auto mb-3 sm:hidden shrink-0" />
+
+              {/* Header */}
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-yellow-400/20 border border-yellow-400/40 flex items-center justify-center text-yellow-600 dark:text-yellow-400 shrink-0">
+                    <Tag className="w-5 h-5 stroke-[2.2]" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white leading-tight">
+                      Name your package
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Remember what it is & where it was ordered
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsNameModalOpen(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors cursor-pointer shrink-0"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Form Fields */}
+              <div className="flex flex-col gap-4">
+                {/* Field 1: What is this package? */}
+                <div className="space-y-1.5">
+                  <label className="text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                    <span>What is in this package?</span>
+                    <span className="text-yellow-500 font-bold">*</span>
+                  </label>
+                  <div className="flex items-center bg-gray-50 dark:bg-[#202024] border border-gray-200 dark:border-white/10 rounded-2xl px-4 py-3 focus-within:ring-2 focus-within:ring-yellow-400/50 focus-within:border-yellow-400 transition-all">
+                    <Package className="w-4.5 h-4.5 text-gray-400 mr-2.5 shrink-0" />
+                    <input
+                      type="text"
+                      value={customPackageName}
+                      onChange={(e) => setCustomPackageName(e.target.value)}
+                      placeholder="e.g. Nike Air Force 1, Laptop Charger, Dress"
+                      className="flex-1 bg-transparent border-none text-sm sm:text-base text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleConfirmNameAndSave();
+                        }
+                      }}
+                    />
+                    {customPackageName && (
+                      <button
+                        type="button"
+                        onClick={() => setCustomPackageName("")}
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-white ml-2 p-1"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Field 2: Where was it ordered? */}
+                <div className="space-y-1.5">
+                  <label className="text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                    <ShoppingBag className="w-4 h-4 text-yellow-500" />
+                    <span>Where did you order it from?</span>
+                  </label>
+                  <div className="flex items-center bg-gray-50 dark:bg-[#202024] border border-gray-200 dark:border-white/10 rounded-2xl px-4 py-3 focus-within:ring-2 focus-within:ring-yellow-400/50 focus-within:border-yellow-400 transition-all">
+                    <Store className="w-4.5 h-4.5 text-gray-400 mr-2.5 shrink-0" />
+                    <input
+                      type="text"
+                      value={customOrderedFrom}
+                      onChange={(e) => setCustomOrderedFrom(e.target.value)}
+                      placeholder="e.g. AliExpress, Amazon, Shein, Apple"
+                      className="flex-1 bg-transparent border-none text-sm sm:text-base text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleConfirmNameAndSave();
+                        }
+                      }}
+                    />
+                    {customOrderedFrom && (
+                      <button
+                        type="button"
+                        onClick={() => setCustomOrderedFrom("")}
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-white ml-2 p-1"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Popular Store Pills */}
+                  <div className="pt-1">
+                    <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 mb-1.5">
+                      Quick select store:
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                      {[
+                        "AliExpress",
+                        "Amazon",
+                        "Shein",
+                        "Taobao",
+                        "Apple",
+                        "Zara",
+                        "eBay",
+                        "ASOS",
+                      ].map((storeName) => {
+                        const isSelected = customOrderedFrom.toLowerCase() === storeName.toLowerCase();
+                        return (
+                          <button
+                            key={storeName}
+                            type="button"
+                            onClick={() => setCustomOrderedFrom(isSelected ? "" : storeName)}
+                            className={`text-xs px-3 py-1.5 rounded-full font-medium transition-all cursor-pointer touch-manipulation ${
+                              isSelected
+                                ? "bg-yellow-400 text-black font-bold shadow-xs scale-105"
+                                : "bg-gray-100 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 border border-gray-200/60 dark:border-white/5"
+                            }`}
+                          >
+                            {storeName}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Live Waybill Preview Snippet */}
+                <div className="bg-yellow-50/70 dark:bg-yellow-400/5 border border-yellow-200/70 dark:border-yellow-400/15 rounded-2xl p-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-yellow-400/20 text-yellow-700 dark:text-yellow-400 flex items-center justify-center font-bold text-xs">
+                      #
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wide">Tracking ID</p>
+                      <p className="text-xs font-mono font-bold text-gray-900 dark:text-white">{packageDetails.trackingId}</p>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-semibold text-yellow-700 dark:text-yellow-400 bg-yellow-400/20 px-2 py-0.5 rounded-full">
+                    {packageDetails.courier}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-2.5 mt-5">
+                <button
+                  type="button"
+                  onClick={handleConfirmNameAndSave}
+                  className="w-full py-3.5 sm:py-4 rounded-2xl bg-yellow-400 hover:bg-yellow-500 active:scale-[0.99] text-black font-bold text-sm sm:text-base transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer touch-manipulation"
+                >
+                  <Check className="w-4 h-4 stroke-[2.5]" />
+                  <span>Save & Add to My Packages</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSkipNaming}
+                  className="w-full py-2.5 rounded-xl text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white font-medium text-xs sm:text-sm transition-colors cursor-pointer text-center"
+                >
+                  Skip & Keep Default Name
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -648,11 +1091,18 @@ export default function LinkInboundFlow({ onBack, onComplete }: LinkInboundFlowP
                 <PackageStateIcon status={packageDetails.status || "In-Transit"} className="w-full h-full object-contain" />
               </div>
               <div className="min-w-0 flex-1">
-                <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white truncate">
-                  {packageDetails.title}
-                </h3>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white truncate">
+                    {packageDetails.title}
+                  </h3>
+                  {packageDetails.store && (
+                    <span className="px-2 py-0.5 rounded-md bg-yellow-400/20 text-yellow-800 dark:text-yellow-300 text-xs font-semibold">
+                      From {packageDetails.store}
+                    </span>
+                  )}
+                </div>
                 <p className="font-mono text-xs sm:text-sm text-gray-400 dark:text-gray-500 mt-0.5 truncate">
-                  {packageDetails.trackingId}
+                  {packageDetails.trackingId} • {packageDetails.courier}
                 </p>
               </div>
             </div>
@@ -873,7 +1323,7 @@ export default function LinkInboundFlow({ onBack, onComplete }: LinkInboundFlowP
 
           {/* Modal Container */}
           <div
-            className="w-full max-w-sm bg-white dark:bg-[#18181b] rounded-3xl p-6 border border-gray-100 dark:border-white/10 shadow-2xl relative z-10 animate-in zoom-in-95 duration-200 text-center flex flex-col items-center"
+            className="w-full max-w-sm bg-white dark:bg-[#18181b] rounded-3xl p-6 border border-gray-100 dark:border-white/10 shadow-2xl relative z-10 animate-in slide-in-from-bottom duration-300 ease-out text-center flex flex-col items-center"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}

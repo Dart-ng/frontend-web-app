@@ -48,6 +48,7 @@ import courierRatingAvatar from "../assets/courier_rating_avatar.png";
 import greenSuccessBadge from "../assets/good-mark.svg";
 import SendPackageModal from "./SendPackageModal";
 import ConfettiBackground from "./ConfettiBackground";
+import RateRiderModal from "./RateRiderModal";
 
 export interface Rider {
   id: string;
@@ -1811,7 +1812,7 @@ export default function SendPackageFlow({
             <button
               type="button"
               onClick={() => {
-                copyToClipboard("https://moov.app/rider-invite/HUD-99P", "Rider invitation link");
+                copyToClipboard("https://dart.app/rider-invite/HUD-99P", "Rider invitation link");
                 setInviteToast("Rider invitation link copied!");
                 setTimeout(() => setInviteToast(null), 2500);
               }}
@@ -2235,7 +2236,7 @@ export default function SendPackageFlow({
 
             {/* Payment Options Stack */}
             <div className="rounded-3xl border border-gray-200/90 dark:border-white/10 overflow-hidden divide-y divide-gray-100 dark:divide-white/5 bg-white dark:bg-[#161618] shadow-2xs">
-              {/* Option 1: Moov Wallet */}
+              {/* Option 1: Dart Wallet */}
               <button
                 type="button"
                 onClick={() => setSelectedPaymentMethod("wallet")}
@@ -2251,7 +2252,7 @@ export default function SendPackageFlow({
                   </div>
                   <div>
                     <h4 className="font-bold text-sm sm:text-base text-gray-900 dark:text-white">
-                      Moov Wallet
+                      Dart Wallet
                     </h4>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                       Available balance: <span className="font-bold text-gray-900 dark:text-white">₦10,000</span>
@@ -3294,6 +3295,9 @@ export default function SendPackageFlow({
       {/* SCREEN 9: DELIVERY SUCCESSFUL (Matches User's Screenshot Exactly)         */}
       {/* ========================================================================= */}
       {screen === "success" && (() => {
+        const chosenRider =
+          defaultRidersList.find((r) => r.id === selectedRiderId) || defaultRidersList[0];
+
         return (
           <div className="w-full flex-1 h-full min-h-full overflow-y-auto bg-white dark:bg-[#0c0c0e] rounded-none m-0 shadow-none relative select-none">
             {/* Celebration Confetti in upper half (Hardcoded Static SVG, Not Animated) */}
@@ -3379,61 +3383,15 @@ export default function SendPackageFlow({
               </div>
             </div>
 
-            {/* Quick Interactive Rating Modal */}
-            {showRatingModal && (
-              <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-                <div
-                  onClick={(e) => e.stopPropagation()}
-                  className="w-full sm:max-w-md bg-white dark:bg-[#18181b] rounded-t-[32px] sm:rounded-[32px] p-6 sm:p-7 border-t sm:border border-gray-100 dark:border-white/10 shadow-2xl animate-in slide-in-from-bottom duration-200 text-center pb-[max(2rem,env(safe-area-inset-bottom,1.5rem))] sm:pb-7 space-y-5"
-                >
-                  <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full mx-auto -mt-1 mb-2 sm:hidden" />
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">Rate your experience</h3>
-                    <button
-                      type="button"
-                      onClick={() => setShowRatingModal(false)}
-                      className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-500 hover:text-gray-900 dark:hover:text-white cursor-pointer"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                    How was your delivery service with Divine Augustina?
-                  </p>
-                  
-                  {/* Star Rating Select */}
-                  <div className="flex items-center justify-center gap-2 py-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => setUserRating(star)}
-                        className="p-1 hover:scale-110 transition-transform cursor-pointer"
-                      >
-                        <Star
-                          className={`w-9 h-9 ${
-                            star <= userRating
-                              ? "fill-yellow-400 text-yellow-400"
-                              : "text-gray-300 dark:text-gray-600"
-                          }`}
-                        />
-                      </button>
-                    ))}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowRatingModal(false);
-                      copyToClipboard("Thank you for your rating!", "Rating submitted");
-                    }}
-                    className="w-full py-3.5 rounded-2xl bg-[#FFCC00] hover:bg-[#f5c400] text-gray-950 font-bold text-sm sm:text-base transition-all shadow-xs cursor-pointer"
-                  >
-                    Submit Rating
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* Rate Rider Modal matching screenshot */}
+            <RateRiderModal
+              isOpen={showRatingModal}
+              onClose={() => setShowRatingModal(false)}
+              riderName={chosenRider.name || "Divine Augustina"}
+              onSubmit={(data) => {
+                copyToClipboard("Thank you for your rating!", "Rating submitted");
+              }}
+            />
           </div>
         );
       })()}

@@ -69,10 +69,10 @@ export default function AuthLayout({ children, hideTopBar = false }: AuthLayoutP
   const activeSlide = SLIDES[currentSlide];
 
   return (
-    <div className="min-h-[100dvh] w-full flex flex-col md:flex-row bg-[#fcfcfc] dark:bg-[#0c0c0e] text-gray-900 dark:text-white transition-colors overflow-hidden">
+    <div className="min-h-[100dvh] w-full flex flex-col xl:flex-row bg-[#fcfcfc] dark:bg-[#0c0c0e] text-gray-900 dark:text-white transition-colors overflow-hidden">
       
-      {/* Left Column: Visual Carousel Panel (Desktop only) */}
-      <div className="hidden md:flex md:w-1/2 lg:w-[48%] xl:w-[52%] relative overflow-hidden bg-gray-950 flex-col justify-between p-8 lg:p-12 shrink-0 select-none">
+      {/* Left Column: Visual Carousel Panel (Desktop only - hidden on mobile and tablet) */}
+      <div className="hidden xl:flex xl:w-1/2 2xl:w-[52%] relative overflow-hidden bg-gray-950 flex-col justify-between p-8 lg:p-12 shrink-0 select-none">
         
         {/* Background Carousel Images with Smooth Cross-fade */}
         {SLIDES.map((slide, index) => (
@@ -180,18 +180,18 @@ export default function AuthLayout({ children, hideTopBar = false }: AuthLayoutP
 
       </div>
 
-      {/* Right Column: Form Area */}
-      <div className="flex-1 flex flex-col min-h-[100dvh] md:min-h-screen overflow-y-auto relative">
+      {/* Right Column: Form Area (Full screen on mobile and tablet) */}
+      <div className="flex-1 flex flex-col min-h-[100dvh] xl:min-h-screen overflow-y-auto relative">
         
-        {/* Top Bar with Mobile Logo & Theme Switcher */}
+        {/* Top Bar with Logo (Mobile & Tablet) & Theme Switcher */}
         {!hideTopBar && (
           <div className="w-full flex items-center justify-between px-5 sm:px-6 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-3 sm:pb-4 shrink-0">
-            {/* Mobile Logo */}
-            <div className="flex md:hidden items-center">
+            {/* Logo for Mobile and Tablet */}
+            <div className="flex xl:hidden items-center">
               <DartLogo variant="auto" className="h-11 sm:h-12 w-auto" />
             </div>
 
-            <div className="hidden md:block"></div>
+            <div className="hidden xl:block"></div>
 
             {/* Quick Theme Toggle */}
             <button

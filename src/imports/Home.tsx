@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bell, ScanLine, Send, Download, ArrowRight, ChevronRight, Package, Clock } from "lucide-react";
+import { ScanLine, Search, Send, Download, ArrowRight, ChevronRight, Package, Clock } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import ReceivePackageModal from "../components/ReceivePackageModal";
 import SendPackageModal from "./../components/SendPackageModal";
@@ -7,6 +7,7 @@ import SendPackageFlow from "../components/SendPackageFlow";
 import DeliveryDetails, { DeliveryDetailsItem } from "./DeliveryDetails";
 import LinkInboundFlow from "../components/LinkInboundFlow";
 import PackageStateIcon from "../components/PackageStateIcon";
+import NotificationButton from "../components/NotificationButton";
 
 interface DeliveryItem {
   id: string;
@@ -26,9 +27,27 @@ interface DeliveryItem {
   isArrived?: boolean;
   arrivedDate?: string;
   pickupTerminal?: string;
+  tracks?: any[];
+  payUrl?: string;
 }
 
 const DELIVERIES_DATA: DeliveryItem[] = [
+  {
+    id: "inbound-home-speedaf",
+    title: "SpeedAF Inbound Package",
+    store: "SpeedAF Express",
+    date: "Sep 13th 8:49 AM",
+    status: "In-Transit",
+    trackingId: "NG021358672334",
+    type: "linked",
+    isInbound: true,
+    courier: "SpeedAF Express",
+    shippedDate: "Sep 12th 2026 • 5:04 AM",
+    estimatedArrival: "Sep 13th 2026 • 8:49 AM",
+    category: "PARCEL",
+    fromLocation: "Nigeria Clearance Hub",
+    toLocation: "Distribution DC-BNI CENTRAL",
+  },
   {
     id: "inbound-home-1",
     title: "Black Hoodie XXL",
@@ -153,6 +172,8 @@ export default function Home({
   const [isSendModalOpen, setIsSendModalOpen] = useState(false);
   const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
   const [isLinkingInbound, setIsLinkingInbound] = useState(false);
+  const [linkingTrackingId, setLinkingTrackingId] = useState<string | undefined>();
+  const [searchTrackingId, setSearchTrackingId] = useState("");
   const [deliveryTab, setDeliveryTab] = useState<"my" | "linked">("my");
   const [deliveries, setDeliveries] = useState<DeliveryItem[]>(DELIVERIES_DATA);
   const [selectedDelivery, setSelectedDelivery] = useState<DeliveryDetailsItem | null>(null);
@@ -204,14 +225,18 @@ export default function Home({
   if (isLinkingInbound) {
     return (
       <LinkInboundFlow
-        onBack={() => setIsLinkingInbound(false)}
+        initialTrackingId={linkingTrackingId}
+        onBack={() => {
+          setIsLinkingInbound(false);
+          setLinkingTrackingId(undefined);
+        }}
         onComplete={(pkg) => {
           const newInbound: DeliveryItem = {
             id: pkg.id || "inbound-" + Date.now(),
             title: pkg.title,
-            store: pkg.courier,
+            store: pkg.store || pkg.courier,
             date: "Today",
-            status: pkg.status,
+            status: pkg.status === "Pending" ? "In-Transit" : (pkg.status as DeliveryItem["status"]),
             trackingId: pkg.trackingId,
             type: "linked",
             isInbound: true,
@@ -221,10 +246,13 @@ export default function Home({
             category: pkg.category,
             fromLocation: pkg.fromLocation,
             toLocation: pkg.toLocation,
+            tracks: pkg.tracks,
+            payUrl: pkg.payUrl,
           };
           setDeliveries((prev) => [newInbound, ...prev]);
           setDeliveryTab("linked");
           setIsLinkingInbound(false);
+          setLinkingTrackingId(undefined);
         }}
       />
     );
@@ -306,12 +334,10 @@ export default function Home({
                 <h1 className="text-xl sm:text-2xl font-medium mb-1 text-white dark:text-black">Good morning Hudeen 👋🏾</h1>
                 <p className="text-sm text-gray-400 dark:text-black/75">Auchi, Edo state</p>
               </div>
-              <button 
+              <NotificationButton 
+                variant="dark-header" 
                 onClick={onOpenNotifications} 
-                className="w-10 h-10 flex items-center justify-center rounded-full bg-yellow-400 dark:bg-black/10 hover:bg-yellow-500 dark:hover:bg-black/20 transition-colors shrink-0"
-              >
-                <Bell className="w-5 h-5 text-black" />
-              </button>
+              />
             </div>
 
             <h2 className="text-2xl sm:text-4xl font-semibold leading-tight mb-6 sm:mb-8 text-white dark:text-black">
@@ -319,16 +345,35 @@ export default function Home({
             </h2>
 
             {/* Track Package Input */}
-            <div className="relative flex items-center">
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (searchTrackingId.trim()) {
+                  setLinkingTrackingId(searchTrackingId.trim());
+                }
+                setIsLinkingInbound(true);
+              }}
+              className="relative flex items-center"
+            >
               <input 
                 type="text" 
+                value={searchTrackingId}
+                onChange={(e) => setSearchTrackingId(e.target.value)}
                 placeholder="Track Package" 
                 className="w-full h-14 bg-white/10 dark:bg-[#141416] text-white dark:text-white placeholder-gray-400 dark:placeholder-gray-400 rounded-full pl-6 pr-14 focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:focus:ring-black border border-white/5 dark:border-black/20 dark:shadow-sm transition-all font-medium"
               />
-              <button className="absolute right-3 w-10 h-10 flex items-center justify-center text-yellow-400 dark:text-yellow-400 hover:text-yellow-300 dark:hover:text-yellow-300 transition-colors cursor-pointer">
-                <ScanLine className="w-6 h-6" />
+              <button 
+                type="submit"
+                title={searchTrackingId.trim() ? "Search tracking ID" : "Scan package barcode"}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white flex items-center justify-center text-gray-950 shadow-sm hover:bg-gray-100 active:scale-95 transition-all cursor-pointer shrink-0"
+              >
+                {searchTrackingId.trim().length > 0 ? (
+                  <Search className="w-5 h-5 text-gray-950 stroke-[2.2] animate-in zoom-in-75 duration-150" />
+                ) : (
+                  <ScanLine className="w-5 h-5 text-gray-950 stroke-[2] animate-in zoom-in-75 duration-150" />
+                )}
               </button>
-            </div>
+            </form>
           </div>
         </div>
 
@@ -448,6 +493,7 @@ export default function Home({
                     setSelectedDelivery({
                       id: item.id,
                       title: item.title,
+                      store: item.store,
                       trackingCode: item.trackingId.startsWith("DART-") ? `#42324-HUD-${item.trackingId.replace('DART-', '')}` : item.trackingId,
                       status: item.status,
                       fromLocation: item.fromLocation || (item.store === "AliExpress" ? "China, Beijing" : item.store.toUpperCase()),
@@ -464,6 +510,8 @@ export default function Home({
                       isArrived: item.isArrived,
                       arrivedDate: item.arrivedDate || "Jul 30th 2026 • 12:47 PM",
                       pickupTerminal: item.pickupTerminal || "GIG Terminal, Auchi, Edo state",
+                      tracks: item.tracks,
+                      payUrl: item.payUrl,
                       rider: {
                         name: item.courier || "Divine Augustina",
                         idCode: "#42324-FHJS44R-34R",

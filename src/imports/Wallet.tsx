@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { ArrowLeft, Bell, ArrowDown, ArrowUp, Plus, ChevronRight, Filter, CheckCircle2, CreditCard, Landmark, Info } from "lucide-react";
+import { ArrowLeft, ArrowDown, ArrowUp, Plus, ChevronRight, Filter, CheckCircle2, CreditCard, Landmark, Info } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
+import NotificationButton from "../components/NotificationButton";
 
 type View = "home" | "all_transactions" | "add_funds" | "review" | "success" | "transaction_details";
 
@@ -12,7 +13,7 @@ const TRANSACTIONS = [
   { id: 5, title: 'Ride payment (Auchi → Iyapki)', subtitle: 'Order (Google pixel 9pro) • Aug 13th • 11:15 AM', amount: '-₦2,000', isCredit: false, dateGroup: 'This week' },
 ];
 
-export default function Wallet({ onBack }: { onBack?: () => void } = {}) {
+export default function Wallet({ onBack, onOpenNotifications }: { onBack?: () => void; onOpenNotifications?: () => void } = {}) {
   const { resolvedTheme } = useTheme();
   const [view, setView] = useState<View>("home");
   const [fundsTab, setFundsTab] = useState<"deposit" | "withdraw">("deposit");
@@ -78,9 +79,10 @@ export default function Wallet({ onBack }: { onBack?: () => void } = {}) {
             >
               <ArrowLeft className="w-5 h-5 text-white dark:text-black" />
             </button>
-            <button className="w-10 h-10 flex items-center justify-center rounded-full bg-yellow-400 dark:bg-black/10 hover:bg-yellow-500 dark:hover:bg-black/20 transition-colors shrink-0">
-              <Bell className="w-5 h-5 text-black" />
-            </button>
+            <NotificationButton 
+              variant="dark-header" 
+              onClick={onOpenNotifications} 
+            />
           </div>
 
           <div className="text-center mb-7 sm:mb-10">
@@ -534,7 +536,7 @@ export default function Wallet({ onBack }: { onBack?: () => void } = {}) {
         </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-10 max-w-xs">
           {fundsTab === "deposit"
-            ? `₦${Number(amount || 0).toLocaleString()} has been added to your dart wallet.`
+            ? `₦${Number(amount || 0).toLocaleString()} has been added to your Dart Wallet.`
             : `₦${Number(amount || 0).toLocaleString()} has been transferred to your Access Bank account.`}
         </p>
 

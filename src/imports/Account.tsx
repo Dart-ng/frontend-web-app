@@ -1,20 +1,23 @@
 import React, { useState } from "react";
-import { Bell, ArrowLeft, ChevronRight, User, ShieldCheck, MapPin, Wallet, Moon, Sun, Globe, MessageCircleQuestion, Headphones, Sparkles, Users, Shield, Info, Smartphone } from "lucide-react";
+import { Bell, ArrowLeft, ChevronRight, User, ShieldCheck, MapPin, Wallet, Moon, Sun, Globe, MessageCircleQuestion, Headphones, Sparkles, Users, Shield, Info, Smartphone, Star } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import RateDart from "./RateDart";
+import RateRiderModal from "../components/RateRiderModal";
 import HelpCentre from "./HelpCentre";
 import ContactSupport from "./ContactSupport";
 import ReportIssue from "./ReportIssue";
 import AboutDart from "./AboutDart";
 import PersonalInformation, { UserProfileInfo } from "./PersonalInformation";
+import Profile from "./Profile";
 import AccountVerification from "./AccountVerification";
 import PaymentMethod from "./PaymentMethod";
 import NotificationPreferences from "./NotificationPreferences";
 import SavedAddress from "./SavedAddress";
 import LanguageModal, { LanguageOption } from "../components/LanguageModal";
 import AppearanceModal from "../components/AppearanceModal";
+import NotificationButton from "../components/NotificationButton";
 
-type AccountView = "main" | "rate" | "help" | "contact" | "report" | "about" | "personal" | "verification" | "payment" | "notifications" | "address";
+type AccountView = "main" | "profile" | "rate" | "help" | "contact" | "report" | "about" | "personal" | "verification" | "payment" | "notifications" | "address";
 
 export default function Account({ 
   onOpenNotifications,
@@ -35,6 +38,7 @@ export default function Account({
   });
   const [isLanguageModalOpen, setIsLanguageModalOpen] = useState<boolean>(false);
   const [isAppearanceModalOpen, setIsAppearanceModalOpen] = useState<boolean>(false);
+  const [isRateRiderModalOpen, setIsRateRiderModalOpen] = useState<boolean>(false);
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageOption>({
     id: "en",
     name: "English",
@@ -103,13 +107,32 @@ export default function Account({
     );
   }
 
+  if (view === "profile") {
+    return (
+      <div className="flex-1 flex flex-col bg-[#fcfcfc] dark:bg-[#0c0c0e] h-full overflow-y-auto transition-colors">
+        <div className="w-full max-w-4xl 2xl:max-w-5xl mx-auto flex flex-col min-h-full bg-transparent border-0 md:border-x border-gray-200/70 dark:border-white/5 relative transition-colors">
+          <Profile
+            onBack={() => setView("main")}
+            userProfile={userProfile}
+            onOpenNotifications={onOpenNotifications}
+            onVerifyIdentity={() => setView("verification")}
+            onEditPersonalInformation={() => setView("personal")}
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (view === "personal") {
     return (
       <div className="flex-1 flex flex-col bg-[#fcfcfc] dark:bg-[#0c0c0e] h-full overflow-y-auto transition-colors">
         <div className="w-full max-w-4xl 2xl:max-w-5xl mx-auto flex flex-col min-h-full bg-transparent border-0 md:border-x border-gray-200/70 dark:border-white/5 relative transition-colors">
           <PersonalInformation
             onBack={() => setView("main")}
+            initialProfile={userProfile}
             onSave={(updated) => setUserProfile(updated)}
+            onOpenNotifications={onOpenNotifications}
+            onVerifyIdentity={() => setView("verification")}
           />
         </div>
       </div>
@@ -173,17 +196,19 @@ export default function Account({
             <ArrowLeft className="w-5 h-5 text-gray-800 dark:text-white" />
           </button>
           <h1 className="text-xl font-medium text-gray-900 dark:text-white">Account</h1>
-          <button onClick={onOpenNotifications} className="w-10 h-10 flex items-center justify-center rounded-full bg-yellow-400 hover:bg-yellow-500 text-black shadow-xs transition-colors relative cursor-pointer" title="Notifications">
-            <Bell className="w-5 h-5 fill-black text-black" />
-            <div className="absolute top-2 right-2 w-2 h-2 bg-black rounded-full border border-yellow-400"></div>
-          </button>
+          <NotificationButton 
+            variant="standard" 
+            onClick={onOpenNotifications} 
+          />
+          {/* Spacer to keep title centered on desktop when notification button is hidden */}
+          <div className="w-10 hidden xl:block" aria-hidden="true" />
         </div>
 
         <div className="flex-1 px-3.5 sm:px-8 md:px-10 py-5 sm:py-8 flex flex-col gap-6 sm:gap-8">
           
           {/* Profile Header */}
           <div 
-            onClick={() => setView("personal")}
+            onClick={() => setView("profile")}
             className="flex items-center justify-between cursor-pointer group hover:opacity-95 transition-opacity"
           >
             <div className="flex items-center gap-4">
@@ -392,6 +417,22 @@ export default function Account({
               </button>
 
               <button 
+                onClick={() => setIsRateRiderModalOpen(true)}
+                className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group cursor-pointer"
+              >
+                <div className="flex items-center gap-4 text-left">
+                  <div className="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-400/10 flex items-center justify-center border border-amber-200/40 dark:border-amber-400/20 shrink-0">
+                    <Star className="w-5 h-5 text-amber-500" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-medium text-gray-900 dark:text-white">Rate Riders</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">Help us reward great riders</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-800 dark:group-hover:text-white transition-colors shrink-0" />
+              </button>
+
+              <button 
                 onClick={() => setView("rate")}
                 className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group cursor-pointer"
               >
@@ -494,6 +535,13 @@ export default function Account({
       <AppearanceModal
         isOpen={isAppearanceModalOpen}
         onClose={() => setIsAppearanceModalOpen(false)}
+      />
+
+      {/* Rate Rider Modal */}
+      <RateRiderModal
+        isOpen={isRateRiderModalOpen}
+        onClose={() => setIsRateRiderModalOpen(false)}
+        riderName="Divine Augustina"
       />
     </div>
   );

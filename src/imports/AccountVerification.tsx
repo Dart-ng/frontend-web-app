@@ -239,7 +239,7 @@ export default function AccountVerification({ onBack, onVerifyNin }: AccountVeri
 
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full sm:max-w-lg bg-white dark:bg-[#18181b] rounded-t-[32px] sm:rounded-[32px] p-5 sm:p-7 shadow-2xl border border-gray-100 dark:border-white/10 animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 relative max-h-[92dvh] overflow-y-auto pb-[max(1.75rem,env(safe-area-inset-bottom,0px))] sm:pb-7 transition-colors z-10"
+            className="w-full sm:max-w-lg bg-white dark:bg-[#18181b] rounded-t-[32px] sm:rounded-[32px] p-5 sm:p-7 shadow-2xl border border-gray-100 dark:border-white/10 animate-in slide-in-from-bottom duration-300 ease-out relative max-h-[92dvh] overflow-y-auto pb-[max(1.75rem,env(safe-area-inset-bottom,0px))] sm:pb-7 transition-colors z-10"
           >
             {/* Mobile Sheet Handle */}
             <div

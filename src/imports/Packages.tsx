@@ -31,6 +31,23 @@ export default function Packages({
 
   const [linkedDeliveries, setLinkedDeliveries] = useState<DeliveryDetailsItem[]>([
     {
+      id: "inbound-speedaf-live",
+      title: "SpeedAF Inbound Package",
+      trackingCode: "NG021358672334",
+      status: "In-Transit",
+      fromLocation: "Nigeria Clearance Hub",
+      toLocation: "Distribution DC-BNI CENTRAL",
+      date: "Sep 13th",
+      time: "8:49 AM",
+      weight: "Standard",
+      category: "PARCEL",
+      isInbound: true,
+      courier: "SpeedAF Express",
+      shippedDate: "Sep 12th 2026 • 5:04 AM",
+      estimatedArrival: "Sep 13th 2026 • 8:49 AM",
+      fragileNote: "Live package fetched from tracking API",
+    },
+    {
       id: "inbound-1",
       title: "Black Hoodie XXL",
       trackingCode: "NGS213-2324-23243",
@@ -154,6 +171,7 @@ export default function Packages({
           const newLinkedItem: DeliveryDetailsItem = {
             id: pkg.id || "inbound-" + Date.now(),
             title: pkg.title,
+            store: pkg.store || pkg.courier,
             trackingCode: pkg.trackingId,
             status: pkg.status,
             fromLocation: pkg.fromLocation,
@@ -162,13 +180,15 @@ export default function Packages({
             time: "Just now",
             weight: "Medium",
             category: pkg.category,
-            fragileNote: `Inbound package from ${pkg.courier}`,
+            fragileNote: pkg.store ? `Ordered from ${pkg.store} via ${pkg.courier}` : `Inbound package from ${pkg.courier}`,
             isInbound: true,
             courier: pkg.courier,
             shippedDate: pkg.shippedDate,
             estimatedArrival: pkg.estimatedArrival,
+            tracks: pkg.tracks,
+            payUrl: pkg.payUrl,
             rider: {
-              name: pkg.courier,
+              name: pkg.store ? `${pkg.store} • ${pkg.courier}` : pkg.courier,
               idCode: pkg.trackingId,
               avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
               rating: 5.0,
@@ -218,9 +238,10 @@ export default function Packages({
         <div className="px-4 sm:px-6 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-3 sm:pb-4 flex items-center justify-between bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-sm sticky top-0 z-30 border-b border-gray-100 dark:border-white/5">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Deliveries</h1>
           
-          <div className="relative">
-            <button 
-              onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}
+          <div className="flex items-center">
+            <div className="relative">
+              <button 
+                onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}
               className="w-10 h-10 flex items-center justify-center rounded-xl bg-yellow-400 hover:bg-yellow-500 text-black shadow-xs transition-colors cursor-pointer touch-manipulation"
               title="Add or Send Package"
               aria-expanded={isActionMenuOpen}
@@ -299,6 +320,7 @@ export default function Packages({
                 </div>
               </>
             )}
+            </div>
           </div>
         </div>
 
@@ -541,7 +563,7 @@ export default function Packages({
                       </span>
                       <h4 className="font-semibold text-gray-900 dark:text-white truncate">{item.title}</h4>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-                        {item.trackingCode} • {item.date} {item.time}
+                        {item.store ? `From ${item.store} • ` : ""}{item.trackingCode} • {item.date} {item.time}
                       </p>
                     </div>
                     <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-gray-800 dark:group-hover:text-white group-hover:translate-x-0.5 transition-all shrink-0" />

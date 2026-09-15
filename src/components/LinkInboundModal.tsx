@@ -43,9 +43,10 @@ export default function LinkInboundModal({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!trackingNumber.trim()) {
+    const cleanNumber = trackingNumber.trim();
+    if (!cleanNumber) {
       setError("Please enter a tracking or waybill number");
       return;
     }
@@ -53,22 +54,47 @@ export default function LinkInboundModal({
     setIsSubmitting(true);
     setError("");
 
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setIsSuccess(true);
+    let verifiedTrackingNo = cleanNumber.toUpperCase();
+    let detectedCourier = COURIERS.find((c) => c.id === selectedCourier)?.name || "Dart Express";
+    let finalItemName = itemName.trim();
 
-      setTimeout(() => {
-        onSuccess?.({
-          trackingNumber: trackingNumber.trim().toUpperCase(),
-          courier: COURIERS.find((c) => c.id === selectedCourier)?.name || "Dart Express",
-          itemName: itemName.trim() || "Inbound Shipment",
-        });
-        setIsSuccess(false);
-        setTrackingNumber("");
-        setItemName("");
-        onClose();
-      }, 1200);
-    }, 800);
+    try {
+      // Query live tracking API at http://localhost:3000/api/track/
+      const res = await fetch(`http://localhost:3000/api/track/${encodeURIComponent(cleanNumber)}`);
+      if (res.ok) {
+        const result = await res.json();
+        if (result?.success && Array.isArray(result.data) && result.data.length > 0) {
+          const item = result.data[0];
+          if (item.mailNo) verifiedTrackingNo = item.mailNo;
+          if (item.courier) detectedCourier = item.courier;
+
+          if (Array.isArray(item.tracks) && item.tracks.length > 0) {
+            const latestEvent = item.tracks[0];
+            console.log(`[${latestEvent.time}] ${latestEvent.actionName}: ${latestEvent.msgEng}`);
+            if (!finalItemName && latestEvent.actionName) {
+              finalItemName = `${latestEvent.actionName} (${verifiedTrackingNo})`;
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Could not reach http://localhost:3000/api/track/, proceeding with input ID:", err);
+    }
+
+    setIsSubmitting(false);
+    setIsSuccess(true);
+
+    setTimeout(() => {
+      onSuccess?.({
+        trackingNumber: verifiedTrackingNo,
+        courier: detectedCourier,
+        itemName: finalItemName || "Inbound Shipment",
+      });
+      setIsSuccess(false);
+      setTrackingNumber("");
+      setItemName("");
+      onClose();
+    }, 1000);
   };
 
   return (
@@ -81,7 +107,7 @@ export default function LinkInboundModal({
 
       {/* Modal Container */}
       <div
-        className="w-full sm:max-w-md bg-white dark:bg-[#18181b] rounded-t-[32px] sm:rounded-[28px] p-5 sm:p-7 border border-gray-100 dark:border-white/10 shadow-2xl relative z-10 animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 transition-colors max-h-[92dvh] overflow-y-auto pb-[max(1.75rem,env(safe-area-inset-bottom,0px))] sm:pb-7"
+        className="w-full sm:max-w-md bg-white dark:bg-[#18181b] rounded-t-[32px] sm:rounded-[28px] p-5 sm:p-7 border border-gray-100 dark:border-white/10 shadow-2xl relative z-10 animate-in slide-in-from-bottom duration-300 ease-out transition-colors max-h-[92dvh] overflow-y-auto pb-[max(1.75rem,env(safe-area-inset-bottom,0px))] sm:pb-7"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Mobile Pull Bar */}
@@ -164,7 +190,7 @@ export default function LinkInboundModal({
                     setTrackingNumber(e.target.value);
                     if (error) setError("");
                   }}
-                  placeholder="e.g. DART-8392-491 or GIG92834"
+                  placeholder="e.g. NG021358672334 or DART-8392"
                   className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 uppercase font-mono"
                   autoFocus
                 />

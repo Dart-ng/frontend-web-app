@@ -1,205 +1,272 @@
 import React, { useState } from "react";
-import { ArrowLeft, Mail, Phone, Calendar, ShieldCheck, Check, Edit3, X } from "lucide-react";
-
-interface PersonalInformationProps {
-  onBack: () => void;
-  onSave?: (info: UserProfileInfo) => void;
-}
+import {
+  ArrowLeft,
+  Mail,
+  Phone,
+  Calendar,
+  CheckCircle2,
+  Check,
+  X,
+} from "lucide-react";
 
 export interface UserProfileInfo {
   firstName: string;
   lastName: string;
   email: string;
   phone: string;
-  gender: string;
-  dob: string;
+  gender?: string;
+  dob?: string;
   avatarUrl: string;
   isVerified?: boolean;
+  memberId?: string;
+  location?: string;
 }
 
-export default function PersonalInformation({ onBack, onSave }: PersonalInformationProps) {
-  const [profile, setProfile] = useState<UserProfileInfo>({
-    firstName: "Hudeen",
-    lastName: "Danesi",
-    email: "Hudeen09@gmail.com",
-    phone: "+2347031013632",
-    gender: "Male",
-    dob: "Aug 18th, 2000",
-    avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    isVerified: true,
+interface PersonalInformationProps {
+  onBack: () => void;
+  onSave?: (info: UserProfileInfo) => void;
+  onOpenNotifications?: () => void;
+  initialProfile?: UserProfileInfo;
+  onVerifyIdentity?: () => void;
+}
+
+export default function PersonalInformation({
+  onBack,
+  onSave,
+  initialProfile,
+}: PersonalInformationProps) {
+  const [formData, setFormData] = useState<UserProfileInfo>({
+    firstName: initialProfile?.firstName || "Hudeen",
+    lastName: initialProfile?.lastName || "Danesi",
+    email: initialProfile?.email && initialProfile.email !== "----" ? initialProfile.email : "Hudeen09@gmail.com",
+    phone: initialProfile?.phone && initialProfile.phone !== "----" ? initialProfile.phone : "+2347031013632",
+    dob: initialProfile?.dob || "Aug 18th, 2000",
+    gender: initialProfile?.gender || "Male",
+    avatarUrl:
+      initialProfile?.avatarUrl ||
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80",
+    isVerified: initialProfile?.isVerified ?? true,
+    location: initialProfile?.location || "Lagos, Nigeria",
+    memberId: initialProfile?.memberId || "MVU-234-23J",
   });
 
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<"email" | "phone" | "dob" | "gender" | null>(null);
   const [tempValue, setTempValue] = useState<string>("");
-  const [isSaved, setIsSaved] = useState<boolean>(false);
 
-  const startEdit = (field: "email" | "phone" | "dob" | "gender") => {
-    setEditingField(field);
-    if (field === "email") setTempValue(profile.email);
-    if (field === "phone") setTempValue(profile.phone);
-    if (field === "dob") setTempValue(profile.dob);
-    if (field === "gender") setTempValue(profile.gender);
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage((current) => (current === msg ? null : current));
+    }, 2200);
   };
 
-  const saveEdit = () => {
-    if (!tempValue.trim()) return;
-    if (editingField === "email") setProfile({ ...profile, email: tempValue });
-    if (editingField === "phone") setProfile({ ...profile, phone: tempValue });
-    if (editingField === "dob") setProfile({ ...profile, dob: tempValue });
-    if (editingField === "gender") setProfile({ ...profile, gender: tempValue });
+  const handleOpenEdit = (field: "email" | "phone" | "dob" | "gender") => {
+    setEditingField(field);
+    if (field === "email") setTempValue(formData.email);
+    if (field === "phone") setTempValue(formData.phone);
+    if (field === "dob") setTempValue(formData.dob || "Aug 18th, 2000");
+    if (field === "gender") setTempValue(formData.gender || "Male");
+  };
+
+  const handleSaveField = () => {
+    if (!editingField) return;
+    const updated = { ...formData };
+    if (editingField === "email") updated.email = tempValue.trim() || formData.email;
+    if (editingField === "phone") updated.phone = tempValue.trim() || formData.phone;
+    if (editingField === "dob") updated.dob = tempValue.trim() || formData.dob;
+    if (editingField === "gender") updated.gender = tempValue.trim() || formData.gender;
+
+    setFormData(updated);
     setEditingField(null);
+    showToast(`${editingField === "gender" ? "Gender" : editingField.charAt(0).toUpperCase() + editingField.slice(1)} updated`);
   };
 
   const handleSaveChanges = () => {
-    onSave?.(profile);
-    setIsSaved(true);
+    onSave?.(formData);
+    showToast("Changes saved successfully");
     setTimeout(() => {
-      setIsSaved(false);
       onBack();
-    }, 1000);
+    }, 600);
   };
 
   return (
-    <div className="w-full flex-1 flex flex-col min-h-full bg-transparent relative pb-28 md:pb-12 transition-colors">
-      {/* Top Header */}
-      <div className="px-3 sm:px-6 pt-[max(0.75rem,env(safe-area-inset-top,0px))] pb-3 sm:pb-4 flex items-center justify-between border-b border-gray-100 dark:border-white/5 sticky top-0 bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-sm z-10">
+    <div className="w-full flex-1 flex flex-col min-h-full bg-[#fcfcfc] dark:bg-[#0c0c0e] relative transition-colors">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-gray-900/90 text-white text-xs font-medium px-4 py-2.5 rounded-full shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200 flex items-center gap-2">
+          <Check className="w-3.5 h-3.5 text-yellow-400" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Top Header Bar */}
+      <div className="px-4 sm:px-8 pt-[max(0.75rem,env(safe-area-inset-top,0px))] pb-3.5 sm:pb-4 flex items-center justify-between border-b border-gray-100 dark:border-white/5 sticky top-0 bg-[#fcfcfc]/95 dark:bg-[#0c0c0e]/95 backdrop-blur-sm z-10">
         <button
+          type="button"
           onClick={onBack}
-          className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/5 text-gray-800 dark:text-white transition-colors cursor-pointer shrink-0"
-          aria-label="Back"
+          className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-800 dark:text-white transition-colors cursor-pointer"
+          title="Back"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h1 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate px-1 text-center">
+
+        <h1 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white tracking-tight">
           Personal information
         </h1>
-        <div className="w-9 sm:w-10 shrink-0" />
+
+        <div className="w-10" />
       </div>
 
-      <div className="flex-1 px-3 sm:px-6 md:px-8 py-4 sm:py-6 max-w-xl mx-auto w-full flex flex-col justify-between">
-        <div className="flex flex-col gap-4 sm:gap-6">
-          
-          {/* Success Toast Banner */}
-          {isSaved && (
-            <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-2.5 sm:gap-3 text-emerald-800 dark:text-emerald-300 animate-in fade-in slide-in-from-top-2 duration-200">
-              <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
-                <Check className="w-3.5 h-3.5 stroke-[3]" />
-              </div>
-              <span className="text-xs sm:text-sm font-medium">Changes saved successfully!</span>
-            </div>
-          )}
-
+      {/* Main Content Area */}
+      <div className="flex-1 px-4 sm:px-8 py-6 max-w-xl md:max-w-2xl mx-auto w-full flex flex-col justify-between">
+        <div className="space-y-6">
           {/* Main Card */}
-          <div className="bg-white dark:bg-[#1c1c20] border border-gray-100 dark:border-white/5 rounded-2xl sm:rounded-3xl overflow-hidden shadow-xs transition-colors">
+          <div className="bg-white dark:bg-[#18181b] rounded-3xl border border-gray-100 dark:border-white/5 shadow-2xs overflow-hidden transition-colors">
             
-            {/* Top User Profile Header Row */}
-            <div className="p-3.5 sm:p-5 flex items-center gap-3 sm:gap-4 border-b border-gray-100 dark:border-white/5">
-              <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-full overflow-hidden border border-gray-200 dark:border-white/10 shrink-0 bg-gray-100">
+            {/* Header: Avatar, Name, Verified Badge */}
+            <div className="p-5 sm:p-6 flex items-center gap-4">
+              {/* Circular Avatar */}
+              <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0 border border-gray-100 dark:border-white/10">
                 <img
-                  src={profile.avatarUrl}
-                  alt="Profile"
+                  src={formData.avatarUrl}
+                  alt={`${formData.firstName} ${formData.lastName}`}
                   className="w-full h-full object-cover"
                 />
               </div>
-              <div className="flex flex-col min-w-0 flex-1">
-                <h2 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white truncate">
-                  {profile.firstName} {profile.lastName}
+
+              {/* Name and Verification Badge */}
+              <div className="flex flex-col gap-1.5">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white tracking-tight leading-tight">
+                  {formData.firstName} {formData.lastName}
                 </h2>
-                <div className="mt-0.5">
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[8.5px] sm:text-[9px] font-bold bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 border border-green-200/60 dark:border-green-500/20 uppercase tracking-tight whitespace-nowrap">
-                    <ShieldCheck className="w-2.5 h-2.5 text-green-600 dark:text-green-400 shrink-0" />
-                    Identity Verified
+
+                {/* Green VERIFIED Pill Badge */}
+                <div>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#E7F8ED] dark:bg-emerald-950/50 text-[#16A34A] dark:text-emerald-400 text-[11px] font-bold tracking-wider uppercase">
+                    <CheckCircle2 className="w-3 h-3 stroke-[2.5]" />
+                    <span>VERIFIED</span>
                   </span>
                 </div>
               </div>
             </div>
 
+            {/* Horizontal Divider */}
+            <div className="w-full border-b border-gray-100 dark:border-white/5" />
+
             {/* Field Rows */}
             <div className="divide-y divide-gray-100 dark:divide-white/5">
               
               {/* Row 1: Email */}
-              <div className="p-3 sm:p-4.5 flex items-center justify-between gap-2 hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors">
-                <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1 pr-1">
-                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-500 dark:text-gray-400 shrink-0">
-                    <Mail className="w-4 h-4" />
+              <div className="p-4 sm:p-5 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-gray-800 dark:text-gray-200 shrink-0">
+                    <Mail className="w-5 h-5 sm:w-[22px] sm:h-[22px] stroke-[1.8]" />
                   </div>
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span className="text-[11px] sm:text-xs text-gray-400 dark:text-gray-400">Email:</span>
-                    <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white truncate">
-                      {profile.email}
+                  <div className="min-w-0">
+                    <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white block leading-snug">
+                      Email:
+                    </span>
+                    <span className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 block truncate mt-0.5">
+                      {formData.email}
                     </span>
                   </div>
                 </div>
+
+                {/* Light Yellow Update Button */}
                 <button
-                  onClick={() => startEdit("email")}
-                  className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold text-xs transition-colors shrink-0 cursor-pointer touch-manipulation shadow-2xs"
+                  type="button"
+                  onClick={() => handleOpenEdit("email")}
+                  className="px-4 py-1.5 rounded-full bg-[#FEF6D8] dark:bg-yellow-400/15 text-gray-900 dark:text-yellow-300 hover:bg-[#faeebe] dark:hover:bg-yellow-400/25 text-xs sm:text-sm font-medium transition-colors cursor-pointer shrink-0"
                 >
                   Update
                 </button>
               </div>
 
               {/* Row 2: Phone Number */}
-              <div className="p-3 sm:p-4.5 flex items-center justify-between gap-2 hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors">
-                <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1 pr-1">
-                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-500 dark:text-gray-400 shrink-0">
-                    <Phone className="w-4 h-4" />
+              <div className="p-4 sm:p-5 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-gray-800 dark:text-gray-200 shrink-0">
+                    <Phone className="w-5 h-5 sm:w-[22px] sm:h-[22px] stroke-[1.8]" />
                   </div>
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span className="text-[11px] sm:text-xs text-gray-400 dark:text-gray-400">Phone Number</span>
-                    <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white truncate">
-                      {profile.phone}
+                  <div className="min-w-0">
+                    <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white block leading-snug">
+                      Phone Number
+                    </span>
+                    <span className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 block truncate mt-0.5">
+                      {formData.phone}
                     </span>
                   </div>
                 </div>
+
                 <button
-                  onClick={() => startEdit("phone")}
-                  className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold text-xs transition-colors shrink-0 cursor-pointer touch-manipulation shadow-2xs"
+                  type="button"
+                  onClick={() => handleOpenEdit("phone")}
+                  className="px-4 py-1.5 rounded-full bg-[#FEF6D8] dark:bg-yellow-400/15 text-gray-900 dark:text-yellow-300 hover:bg-[#faeebe] dark:hover:bg-yellow-400/25 text-xs sm:text-sm font-medium transition-colors cursor-pointer shrink-0"
                 >
                   Update
                 </button>
               </div>
 
               {/* Row 3: Date of birth */}
-              <div className="p-3 sm:p-4.5 flex items-center justify-between gap-2 hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors">
-                <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1 pr-1">
-                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-500 dark:text-gray-400 shrink-0">
-                    <Calendar className="w-4 h-4" />
+              <div className="p-4 sm:p-5 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-gray-800 dark:text-gray-200 shrink-0">
+                    <Calendar className="w-5 h-5 sm:w-[22px] sm:h-[22px] stroke-[1.8]" />
                   </div>
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span className="text-[11px] sm:text-xs text-gray-400 dark:text-gray-400">Date of birth</span>
-                    <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white truncate">
-                      {profile.dob}
+                  <div className="min-w-0">
+                    <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white block leading-snug">
+                      Date of birth
+                    </span>
+                    <span className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 block truncate mt-0.5">
+                      {formData.dob}
                     </span>
                   </div>
                 </div>
+
                 <button
-                  onClick={() => startEdit("dob")}
-                  className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold text-xs transition-colors shrink-0 cursor-pointer touch-manipulation shadow-2xs"
+                  type="button"
+                  onClick={() => handleOpenEdit("dob")}
+                  className="px-4 py-1.5 rounded-full bg-[#FEF6D8] dark:bg-yellow-400/15 text-gray-900 dark:text-yellow-300 hover:bg-[#faeebe] dark:hover:bg-yellow-400/25 text-xs sm:text-sm font-medium transition-colors cursor-pointer shrink-0"
                 >
                   Update
                 </button>
               </div>
 
               {/* Row 4: Gender */}
-              <div className="p-3 sm:p-4.5 flex items-center justify-between gap-2 hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors">
-                <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1 pr-1">
-                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-500 dark:text-gray-400 shrink-0">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="8" r="5" />
-                      <path d="M12 13v8" />
+              <div className="p-4 sm:p-5 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-gray-800 dark:text-gray-200 shrink-0">
+                    {/* Gender Symbol Icon (Matches screenshot) */}
+                    <svg
+                      width="22"
+                      height="22"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="12" cy="9" r="5" />
+                      <path d="M12 14v7" />
                       <path d="M9 18h6" />
                     </svg>
                   </div>
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span className="text-[11px] sm:text-xs text-gray-400 dark:text-gray-400">Gender</span>
-                    <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white truncate">
-                      {profile.gender}
+                  <div className="min-w-0">
+                    <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white block leading-snug">
+                      Gender
+                    </span>
+                    <span className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 block truncate mt-0.5">
+                      {formData.gender}
                     </span>
                   </div>
                 </div>
+
                 <button
-                  onClick={() => startEdit("gender")}
-                  className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold text-xs transition-colors shrink-0 cursor-pointer touch-manipulation shadow-2xs"
+                  type="button"
+                  onClick={() => handleOpenEdit("gender")}
+                  className="px-4 py-1.5 rounded-full bg-[#FEF6D8] dark:bg-yellow-400/15 text-gray-900 dark:text-yellow-300 hover:bg-[#faeebe] dark:hover:bg-yellow-400/25 text-xs sm:text-sm font-medium transition-colors cursor-pointer shrink-0"
                 >
                   Change
                 </button>
@@ -209,70 +276,101 @@ export default function PersonalInformation({ onBack, onSave }: PersonalInformat
           </div>
         </div>
 
-        {/* Action Button */}
-        <button
-          onClick={handleSaveChanges}
-          className="w-full py-3.5 sm:py-4 rounded-xl sm:rounded-2xl bg-[#FFCC00] hover:bg-[#f5a623] text-gray-950 font-bold text-sm sm:text-base transition-all duration-200 mt-6 sm:mt-8 shadow-sm active:scale-[0.99] cursor-pointer touch-manipulation"
-        >
-          Save changes
-        </button>
+        {/* Bottom Save Changes CTA Button */}
+        <div className="pt-8 pb-4">
+          <button
+            type="button"
+            onClick={handleSaveChanges}
+            className="w-full py-4 rounded-2xl bg-[#FFCC00] hover:bg-[#f5c400] active:scale-[0.99] text-gray-950 font-bold text-base shadow-xs transition-all cursor-pointer flex items-center justify-center"
+          >
+            Save changes
+          </button>
+        </div>
       </div>
 
-      {/* Inline Modal for Updating Fields */}
+      {/* Edit Field Modal */}
       {editingField && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-sm bg-white dark:bg-[#18181b] rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border border-gray-100 dark:border-white/10 animate-in zoom-in-95 duration-200 max-h-[90dvh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
-              <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white capitalize">
-                Update {editingField === "dob" ? "Date of Birth" : editingField}
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => setEditingField(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full sm:max-w-md bg-white dark:bg-[#18181b] rounded-t-[32px] sm:rounded-3xl p-6 border-t sm:border border-gray-100 dark:border-white/10 shadow-2xl space-y-4 pb-[max(1.75rem,env(safe-area-inset-bottom,1.25rem))] sm:pb-6 animate-in slide-in-from-bottom duration-200"
+          >
+            <div className="flex items-center justify-between pb-1">
+              <h3 className="text-base font-bold text-gray-900 dark:text-white capitalize">
+                {editingField === "gender" ? "Change Gender" : `Update ${editingField === "dob" ? "Date of birth" : editingField}`}
               </h3>
               <button
+                type="button"
                 onClick={() => setEditingField(null)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 dark:hover:text-white cursor-pointer"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {editingField === "gender" ? (
-              <div className="flex flex-col gap-2 my-3 sm:my-4">
-                {["Male", "Female", "Prefer not to say"].map((g) => (
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                {["Male", "Female"].map((option) => (
                   <button
-                    key={g}
+                    key={option}
                     type="button"
-                    onClick={() => setTempValue(g)}
-                    className={`w-full py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl border text-xs sm:text-sm font-medium text-left transition-colors cursor-pointer ${
-                      tempValue === g
-                        ? "border-[#FFCC00] bg-amber-50/50 dark:bg-amber-400/10 text-gray-900 dark:text-white font-semibold"
-                        : "border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 text-gray-700 dark:text-gray-300"
+                    onClick={() => setTempValue(option)}
+                    className={`py-3 px-4 rounded-2xl text-sm font-semibold border transition-all cursor-pointer text-center ${
+                      tempValue === option
+                        ? "bg-[#FEF6D8] border-yellow-400 text-gray-950 font-bold ring-2 ring-yellow-400/40"
+                        : "border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:border-gray-300"
                     }`}
                   >
-                    {g}
+                    {option}
                   </button>
                 ))}
               </div>
-            ) : (
+            ) : editingField === "dob" ? (
               <input
-                type={editingField === "email" ? "email" : editingField === "phone" ? "tel" : "text"}
+                type="text"
                 value={tempValue}
                 onChange={(e) => setTempValue(e.target.value)}
+                placeholder="e.g. Aug 18th, 2000"
                 autoFocus
-                className="w-full p-3 my-2 sm:my-3 bg-gray-50 dark:bg-[#202024] border border-gray-200 dark:border-white/10 rounded-xl text-base sm:text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-[#FFCC00]"
+                className="w-full p-3.5 rounded-2xl border border-gray-200 dark:border-white/10 bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-yellow-400 dark:focus:border-yellow-400 transition-colors"
+              />
+            ) : editingField === "email" ? (
+              <input
+                type="email"
+                value={tempValue}
+                onChange={(e) => setTempValue(e.target.value)}
+                placeholder="e.g. name@gmail.com"
+                autoFocus
+                className="w-full p-3.5 rounded-2xl border border-gray-200 dark:border-white/10 bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-yellow-400 dark:focus:border-yellow-400 transition-colors"
+              />
+            ) : (
+              <input
+                type="tel"
+                value={tempValue}
+                onChange={(e) => setTempValue(e.target.value)}
+                placeholder="e.g. +2347031013632"
+                autoFocus
+                className="w-full p-3.5 rounded-2xl border border-gray-200 dark:border-white/10 bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-yellow-400 dark:focus:border-yellow-400 transition-colors"
               />
             )}
 
-            <div className="flex gap-2.5 sm:gap-3 mt-3 sm:mt-4">
+            <div className="flex gap-2.5 pt-2">
               <button
+                type="button"
                 onClick={() => setEditingField(null)}
-                className="flex-1 py-2.5 sm:py-3 rounded-xl border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300 font-semibold text-xs sm:text-sm hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer touch-manipulation"
+                className="flex-1 py-3 rounded-2xl border border-gray-200 dark:border-white/10 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer"
               >
                 Cancel
               </button>
               <button
-                onClick={saveEdit}
-                className="flex-1 py-2.5 sm:py-3 rounded-xl bg-[#FFCC00] hover:bg-[#f5a623] text-gray-950 font-bold text-xs sm:text-sm cursor-pointer touch-manipulation shadow-xs"
+                type="button"
+                onClick={handleSaveField}
+                className="flex-1 py-3 rounded-2xl bg-[#FFCC00] hover:bg-[#f5c400] text-xs font-bold text-gray-950 cursor-pointer"
               >
-                Update
+                Save
               </button>
             </div>
           </div>

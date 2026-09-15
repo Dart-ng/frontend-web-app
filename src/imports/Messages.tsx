@@ -1,105 +1,1067 @@
-import { useState } from "react";
-import { Edit, Search, Phone, MoreVertical, ArrowLeft, Camera, Mic } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import {
+  Edit,
+  Search,
+  Phone,
+  MoreVertical,
+  ArrowLeft,
+  Camera,
+  Mic,
+  Send,
+  Trash2,
+  Play,
+  Pause,
+  CheckCheck,
+  ChevronRight,
+  Copy,
+  Pin,
+  Pencil,
+  Plus,
+  X,
+  MoreHorizontal,
+  Check,
+} from "lucide-react";
+import { formatAudioDuration, generateVoiceNoteFallbackBlob } from "../utils/audio";
+import RateRiderModal from "../components/RateRiderModal";
 
 type Tab = "All" | "Conversation" | "Updates" | "Supports";
+
+interface ChatMessage {
+  id: string;
+  sender: "user" | "other";
+  type: "text" | "audio";
+  text?: string;
+  audioUrl?: string;
+  audioDuration?: number;
+  time: string;
+  reactions?: string[];
+  isPinned?: boolean;
+  isEdited?: boolean;
+}
+
+interface ChatContact {
+  id: string;
+  name: string;
+  avatar: string;
+  role: string;
+  rating: string;
+  online: boolean;
+  package: {
+    title: string;
+    trackingId: string;
+    icon: string;
+  };
+}
+
+const CHAT_CONTACTS: Record<string, ChatContact> = {
+  "1": {
+    id: "1",
+    name: "Divine Augustina",
+    avatar: "https://i.pravatar.cc/100?img=11",
+    role: "Verified Rider",
+    rating: "4.8",
+    online: true,
+    package: {
+      title: "Google pixel 9pro",
+      trackingId: "MV324-H247P",
+      icon: "📦",
+    },
+  },
+  "2": {
+    id: "2",
+    name: "Hamzy Rider",
+    avatar: "https://i.pravatar.cc/100?img=12",
+    role: "Verified Rider",
+    rating: "4.9",
+    online: true,
+    package: {
+      title: "Nike Air Max Sneaker",
+      trackingId: "NK782-X901Q",
+      icon: "👟",
+    },
+  },
+  "3": {
+    id: "3",
+    name: "Muhammad abdul Kareem",
+    avatar: "https://i.pravatar.cc/100?img=13",
+    role: "Verified Rider",
+    rating: "5.0",
+    online: false,
+    package: {
+      title: "iPhone 12 Pro Max",
+      trackingId: "IP990-K112M",
+      icon: "📱",
+    },
+  },
+};
+
+// Fixed soundwave bar heights for WhatsApp-style audio rendering
+const WAVEFORM_BAR_HEIGHTS = [
+  6, 12, 18, 10, 16, 22, 14, 26, 18, 10, 20, 14, 8, 16, 24, 18, 12, 20, 15, 8, 14, 22, 16, 10, 6, 12
+];
+
+// Emojis matching user's screenshot
+const REACTION_EMOJIS = ["👍", "🙂", "😊", "😒", "💖", "😄", "🙃", "👌"];
+const EXTRA_REACTION_EMOJIS = ["❤️", "🔥", "🎉", "🙏", "👏", "😂", "😍", "⚡", "🚀", "💯"];
 
 export default function Messages() {
   const [activeTab, setActiveTab] = useState<Tab>("All");
   const [activeChat, setActiveChat] = useState<string | null>(null);
 
-  if (activeChat) {
+  // Initial demo messages per contact
+  const [messagesByChat, setMessagesByChat] = useState<Record<string, ChatMessage[]>>(() => {
+    const demoVoiceNoteUrl = generateVoiceNoteFallbackBlob(5);
+    return {
+      "1": [
+        {
+          id: "m1",
+          sender: "other",
+          type: "text",
+          text: "Hi please where are You?",
+          time: "10:10 AM",
+        },
+        {
+          id: "m2",
+          sender: "user",
+          type: "text",
+          text: "Good afternoon i’m on my Way Arriving in about 4 minutes.",
+          time: "10:11 AM",
+        },
+        {
+          id: "m3",
+          sender: "other",
+          type: "audio",
+          audioUrl: demoVoiceNoteUrl,
+          audioDuration: 5,
+          time: "10:12 AM",
+        },
+        {
+          id: "m4",
+          sender: "user",
+          type: "text",
+          text: "Alright I'll be outside by the gate.",
+          time: "10:13 AM",
+        },
+      ],
+      "2": [
+        {
+          id: "m2-1",
+          sender: "other",
+          type: "text",
+          text: "Madam am at your gate with the package.",
+          time: "4 mins ago",
+        },
+      ],
+      "3": [
+        {
+          id: "m3-1",
+          sender: "other",
+          type: "text",
+          text: "Item delivered successfully ✅ Have a great day!",
+          time: "12:30 PM",
+        },
+      ],
+    };
+  });
+
+  // Text input & voice recording state
+  const [inputText, setInputText] = useState("");
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [currentlyPlayingAudioId, setCurrentlyPlayingAudioId] = useState<string | null>(null);
+
+  // Context Menu & Reaction State
+  const [selectedMessageForMenu, setSelectedMessageForMenu] = useState<ChatMessage | null>(null);
+  const [showExtraEmojis, setShowExtraEmojis] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Long press detection for mobile
+  const longPressTimerRef = useRef<number | null>(null);
+  const [isRateRiderOpen, setIsRateRiderOpen] = useState(false);
+
+  // MediaRecorder refs
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<number | null>(null);
+  const chatBottomRef = useRef<HTMLDivElement | null>(null);
+
+  // Show temporary toast feedback
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage((current) => (current === msg ? null : current));
+    }, 2200);
+  };
+
+  // Scroll to bottom when messages update or chat opens
+  const scrollToBottom = useCallback(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
+    if (activeChat) {
+      scrollToBottom();
+    }
+  }, [activeChat, messagesByChat, scrollToBottom]);
+
+  // Clean up recording timer and audio tracks on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) {
+        window.clearInterval(recordingTimerRef.current);
+      }
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
+  // Send a text message (or finish editing if in edit mode)
+  const handleSendText = () => {
+    if (!activeChat) return;
+
+    if (editingMessageId) {
+      const trimmed = inputText.trim();
+      if (!trimmed) return;
+      setMessagesByChat((prev) => ({
+        ...prev,
+        [activeChat]: (prev[activeChat] || []).map((m) =>
+          m.id === editingMessageId ? { ...m, text: trimmed, isEdited: true } : m
+        ),
+      }));
+      setEditingMessageId(null);
+      setInputText("");
+      showToast("Message edited");
+      return;
+    }
+
+    const textToSend = inputText.trim();
+    if (!textToSend) return;
+
+    const newMessage: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      sender: "user",
+      type: "text",
+      text: textToSend,
+      time: "Just now",
+    };
+
+    setMessagesByChat((prev) => ({
+      ...prev,
+      [activeChat]: [...(prev[activeChat] || []), newMessage],
+    }));
+
+    setInputText("");
+    setTimeout(scrollToBottom, 50);
+  };
+
+  // Quick suggestion click
+  const handleQuickSuggestion = (text: string) => {
+    if (!activeChat) return;
+    const newMessage: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      sender: "user",
+      type: "text",
+      text,
+      time: "Just now",
+    };
+
+    setMessagesByChat((prev) => ({
+      ...prev,
+      [activeChat]: [...(prev[activeChat] || []), newMessage],
+    }));
+
+    setTimeout(scrollToBottom, 50);
+  };
+
+  // Start WhatsApp-style voice note recording
+  const startVoiceRecording = async () => {
+    try {
+      setIsRecording(true);
+      setRecordingSeconds(0);
+      audioChunksRef.current = [];
+
+      // Start recording timer
+      recordingTimerRef.current = window.setInterval(() => {
+        setRecordingSeconds((prev) => prev + 1);
+      }, 1000);
+
+      // Attempt to access user microphone
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          mediaStreamRef.current = stream;
+
+          const mimeType = MediaRecorder.isTypeSupported("audio/webm")
+            ? "audio/webm"
+            : MediaRecorder.isTypeSupported("audio/mp4")
+            ? "audio/mp4"
+            : "";
+
+          const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+          mediaRecorderRef.current = recorder;
+
+          recorder.ondataavailable = (e) => {
+            if (e.data && e.data.size > 0) {
+              audioChunksRef.current.push(e.data);
+            }
+          };
+
+          recorder.start(100);
+        } catch (micErr) {
+          console.warn("Microphone permission denied or not supported; using simulated audio fallback:", micErr);
+        }
+      }
+    } catch (err) {
+      console.error("Error initializing voice recorder:", err);
+    }
+  };
+
+  // Cancel recording and discard voice note
+  const cancelVoiceRecording = () => {
+    if (recordingTimerRef.current) {
+      window.clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
+
+    mediaRecorderRef.current = null;
+    audioChunksRef.current = [];
+    setIsRecording(false);
+    setRecordingSeconds(0);
+  };
+
+  // Stop recording and send voice note into chat
+  const sendVoiceRecording = () => {
+    if (!activeChat) return;
+
+    const duration = Math.max(1, recordingSeconds);
+
+    if (recordingTimerRef.current) {
+      window.clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+
+    const finalizeAndSend = (audioUrl: string) => {
+      const newVoiceMessage: ChatMessage = {
+        id: `vn-${Date.now()}`,
+        sender: "user",
+        type: "audio",
+        audioUrl,
+        audioDuration: duration,
+        time: "Just now",
+      };
+
+      setMessagesByChat((prev) => ({
+        ...prev,
+        [activeChat]: [...(prev[activeChat] || []), newVoiceMessage],
+      }));
+
+      setIsRecording(false);
+      setRecordingSeconds(0);
+      mediaRecorderRef.current = null;
+      setTimeout(scrollToBottom, 50);
+    };
+
+    // If active MediaRecorder with chunks exists
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.onstop = () => {
+        if (mediaStreamRef.current) {
+          mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+          mediaStreamRef.current = null;
+        }
+
+        if (audioChunksRef.current.length > 0) {
+          const mimeType = mediaRecorderRef.current?.mimeType || "audio/webm";
+          const blob = new Blob(audioChunksRef.current, { type: mimeType });
+          const audioUrl = URL.createObjectURL(blob);
+          finalizeAndSend(audioUrl);
+        } else {
+          const fallbackUrl = generateVoiceNoteFallbackBlob(duration);
+          finalizeAndSend(fallbackUrl);
+        }
+      };
+
+      try {
+        mediaRecorderRef.current.stop();
+      } catch {
+        const fallbackUrl = generateVoiceNoteFallbackBlob(duration);
+        finalizeAndSend(fallbackUrl);
+      }
+    } else {
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+      }
+      const fallbackUrl = generateVoiceNoteFallbackBlob(duration);
+      finalizeAndSend(fallbackUrl);
+    }
+  };
+
+  // Message Context Menu Actions
+  const handleOpenContextMenu = (msg: ChatMessage, e?: React.MouseEvent | React.TouchEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setSelectedMessageForMenu(msg);
+    setShowExtraEmojis(false);
+  };
+
+  const handleCloseContextMenu = () => {
+    setSelectedMessageForMenu(null);
+    setShowExtraEmojis(false);
+  };
+
+  // Add/toggle an emoji reaction on the selected message
+  const handleAddReaction = (emoji: string) => {
+    if (!selectedMessageForMenu || !activeChat) return;
+
+    setMessagesByChat((prev) => {
+      const currentList = prev[activeChat] || [];
+      return {
+        ...prev,
+        [activeChat]: currentList.map((msg) => {
+          if (msg.id !== selectedMessageForMenu.id) return msg;
+          const currentReactions = msg.reactions || [];
+          const exists = currentReactions.includes(emoji);
+          const updatedReactions = exists
+            ? currentReactions.filter((r) => r !== emoji)
+            : [...currentReactions, emoji];
+          return {
+            ...msg,
+            reactions: updatedReactions,
+          };
+        }),
+      };
+    });
+
+    handleCloseContextMenu();
+    showToast(`Reaction added ${emoji}`);
+  };
+
+  // Copy message text
+  const handleCopyMessage = () => {
+    if (!selectedMessageForMenu) return;
+    const textToCopy =
+      selectedMessageForMenu.type === "text"
+        ? selectedMessageForMenu.text || ""
+        : `Voice note (${formatAudioDuration(selectedMessageForMenu.audioDuration || 0)})`;
+
+    navigator.clipboard.writeText(textToCopy);
+    handleCloseContextMenu();
+    showToast("Copied to clipboard");
+  };
+
+  // Pin / Unpin message
+  const handleTogglePinMessage = () => {
+    if (!selectedMessageForMenu || !activeChat) return;
+    const willPin = !selectedMessageForMenu.isPinned;
+
+    setMessagesByChat((prev) => ({
+      ...prev,
+      [activeChat]: (prev[activeChat] || []).map((msg) =>
+        msg.id === selectedMessageForMenu.id ? { ...msg, isPinned: willPin } : msg
+      ),
+    }));
+
+    handleCloseContextMenu();
+    showToast(willPin ? "Message pinned" : "Message unpinned");
+  };
+
+  // Start editing message
+  const handleStartEditMessage = () => {
+    if (!selectedMessageForMenu) return;
+    if (selectedMessageForMenu.type !== "text") {
+      showToast("Voice notes cannot be edited");
+      handleCloseContextMenu();
+      return;
+    }
+
+    setEditingMessageId(selectedMessageForMenu.id);
+    setEditingText(selectedMessageForMenu.text || "");
+    setInputText(selectedMessageForMenu.text || "");
+    handleCloseContextMenu();
+  };
+
+  // Cancel edit mode
+  const handleCancelEdit = () => {
+    setEditingMessageId(null);
+    setEditingText("");
+    setInputText("");
+  };
+
+  // Delete message
+  const handleDeleteMessage = () => {
+    if (!selectedMessageForMenu || !activeChat) return;
+
+    setMessagesByChat((prev) => ({
+      ...prev,
+      [activeChat]: (prev[activeChat] || []).filter((msg) => msg.id !== selectedMessageForMenu.id),
+    }));
+
+    handleCloseContextMenu();
+    showToast("Message deleted");
+  };
+
+  // Long press touch handlers
+  const handleTouchStart = (msg: ChatMessage) => {
+    longPressTimerRef.current = window.setTimeout(() => {
+      handleOpenContextMenu(msg);
+    }, 450);
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const currentContact = activeChat ? CHAT_CONTACTS[activeChat] : null;
+  const currentMessages = activeChat ? messagesByChat[activeChat] || [] : [];
+  const pinnedMessage = currentMessages.find((m) => m.isPinned);
+
+  // Active Chat Screen
+  if (activeChat && currentContact) {
     return (
-      <div className="flex-1 flex flex-col bg-[#fcfcfc] dark:bg-[#0c0c0e] h-full overflow-y-auto transition-colors">
-        <div className="w-full max-w-4xl 2xl:max-w-5xl mx-auto flex flex-col min-h-full bg-transparent border-0 md:border-x border-gray-200/70 dark:border-white/5 overflow-hidden transition-colors">
+      <div className="flex-1 flex flex-col bg-[#fcfcfc] dark:bg-[#0c0c0e] h-full overflow-y-auto transition-colors relative">
+        <div className="w-full max-w-4xl 2xl:max-w-5xl mx-auto flex flex-col min-h-full bg-transparent border-0 md:border-x border-gray-200/70 dark:border-white/5 overflow-hidden transition-colors relative">
           
+          {/* Toast Notification */}
+          {toastMessage && (
+            <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-gray-900/90 text-white text-xs font-medium px-4 py-2 rounded-full shadow-lg backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200 flex items-center gap-2">
+              <Check className="w-3.5 h-3.5 text-yellow-400" />
+              <span>{toastMessage}</span>
+            </div>
+          )}
+
           {/* Chat Header */}
           <div className="px-4 pt-[max(0.75rem,env(safe-area-inset-top,0px))] pb-3 flex items-center justify-between border-b border-gray-100 dark:border-white/5 sticky top-0 bg-white dark:bg-[#161618] z-10">
             <div className="flex items-center gap-3">
-              <button onClick={() => setActiveChat(null)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/5 text-gray-800 dark:text-white transition-colors cursor-pointer">
+              <button
+                onClick={() => {
+                  cancelVoiceRecording();
+                  setActiveChat(null);
+                  setSelectedMessageForMenu(null);
+                }}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/5 text-gray-800 dark:text-white transition-colors cursor-pointer"
+                title="Back to conversations"
+              >
                 <ArrowLeft className="w-5 h-5" />
               </button>
-              <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden flex-shrink-0">
-                 <img src="https://i.pravatar.cc/100?img=11" alt="avatar" className="w-full h-full object-cover" />
+              <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden flex-shrink-0 relative">
+                <img src={currentContact.avatar} alt={currentContact.name} className="w-full h-full object-cover" />
+                {currentContact.online && (
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#161618]" />
+                )}
               </div>
               <div>
-                <h2 className="font-semibold text-sm text-gray-900 dark:text-white">Divine Augustina</h2>
+                <h2 className="font-semibold text-sm text-gray-900 dark:text-white leading-tight">
+                  {currentContact.name}
+                </h2>
                 <p className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> 4.8 • Verified Rider
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> {currentContact.rating} • {currentContact.role}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/5 text-gray-700 dark:text-gray-300 rounded-full transition-colors cursor-pointer">
+            <div className="flex items-center gap-1.5">
+              <button
+                className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/5 text-gray-700 dark:text-gray-300 rounded-full transition-colors cursor-pointer"
+                title="Call rider"
+              >
                 <Phone className="w-4 h-4" />
               </button>
-              <button className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/5 text-gray-700 dark:text-gray-300 rounded-full transition-colors cursor-pointer">
+              <button
+                type="button"
+                onClick={() => setIsRateRiderOpen(true)}
+                className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/5 text-gray-700 dark:text-gray-300 rounded-full transition-colors cursor-pointer"
+                title="Rate rider or options"
+              >
                 <MoreVertical className="w-4 h-4" />
               </button>
             </div>
           </div>
 
-          {/* Chat Area */}
+          {/* Pinned Message Bar (if any pinned) */}
+          {pinnedMessage && (
+            <div className="bg-amber-50/90 dark:bg-amber-950/30 border-b border-amber-200/60 dark:border-amber-500/20 px-4 py-2 flex items-center justify-between text-xs transition-colors">
+              <div className="flex items-center gap-2 overflow-hidden">
+                <Pin className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 fill-amber-500/20" />
+                <span className="font-semibold text-amber-800 dark:text-amber-300 shrink-0">Pinned:</span>
+                <span className="text-amber-900/80 dark:text-amber-200/80 truncate">
+                  {pinnedMessage.type === "text"
+                    ? pinnedMessage.text
+                    : `Voice note (${formatAudioDuration(pinnedMessage.audioDuration || 0)})`}
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setMessagesByChat((prev) => ({
+                    ...prev,
+                    [activeChat]: (prev[activeChat] || []).map((m) =>
+                      m.id === pinnedMessage.id ? { ...m, isPinned: false } : m
+                    ),
+                  }));
+                  showToast("Message unpinned");
+                }}
+                className="text-amber-700 dark:text-amber-400 hover:text-amber-900 text-[11px] font-medium ml-2 shrink-0 cursor-pointer"
+              >
+                Unpin
+              </button>
+            </div>
+          )}
+
+          {/* Chat Messages Area */}
           <div className="flex-1 p-4 overflow-y-auto bg-gray-50 dark:bg-[#121214] flex flex-col gap-4">
             {/* Tracking banner */}
-            <div className="bg-white dark:bg-[#1c1c20] rounded-xl p-3 flex items-center justify-between border border-gray-100 dark:border-white/5">
-               <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gray-100 dark:bg-white/5 rounded-lg flex items-center justify-center font-bold text-xs text-gray-500">📦</div>
-                  <div>
-                    <h4 className="font-semibold text-sm text-gray-900 dark:text-white">Google pixel 9pro</h4>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Tracking ID: MV324-H247P</p>
-                  </div>
-               </div>
-               <button className="bg-yellow-400 text-black text-xs font-semibold px-3 py-1.5 rounded-full cursor-pointer">View Details</button>
-            </div>
-
-            <div className="flex justify-center">
-               <span className="text-[10px] text-gray-400">10:11 AM</span>
-            </div>
-
-            {/* Received Message */}
-            <div className="flex gap-2 max-w-[80%]">
-               <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex-shrink-0 mt-auto overflow-hidden">
-                 <img src="https://i.pravatar.cc/100?img=11" alt="avatar" className="w-full h-full object-cover" />
-               </div>
-               <div className="bg-white dark:bg-[#1c1c20] border border-gray-100 dark:border-white/5 p-3 rounded-2xl rounded-bl-sm text-gray-900 dark:text-white">
-                 <p className="text-sm">Good afternoon I'm on my way. Arriving in about 4 minutes.</p>
-                 <p className="text-[9px] text-gray-400 mt-1 text-right">12 mins ago</p>
-               </div>
-            </div>
-
-            {/* Sent Message */}
-            <div className="flex gap-2 max-w-[80%] self-end">
-               <div className="bg-yellow-400 text-gray-900 p-3 rounded-2xl rounded-br-sm font-medium">
-                 <p className="text-sm">Alright I'll be outside.</p>
-                 <p className="text-[9px] text-gray-800 mt-1 text-right">6 mins ago</p>
-               </div>
-            </div>
-          </div>
-
-          {/* Input Area */}
-          <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] bg-white dark:bg-[#161618] border-t border-gray-100 dark:border-white/5">
-            <div className="flex gap-2 mb-3 overflow-x-auto hide-scrollbar">
-               <button className="px-3 py-1.5 rounded-full border border-gray-200 dark:border-white/10 text-xs whitespace-nowrap text-gray-600 dark:text-gray-300">Call me</button>
-               <button className="px-3 py-1.5 rounded-full border border-gray-200 dark:border-white/10 text-xs whitespace-nowrap text-gray-600 dark:text-gray-300">I'm outside</button>
-               <button className="px-3 py-1.5 rounded-full border border-gray-200 dark:border-white/10 text-xs whitespace-nowrap text-gray-600 dark:text-gray-300">What's your ETA?</button>
-            </div>
-            <div className="flex items-center gap-2">
-              <button className="w-10 h-10 flex items-center justify-center bg-gray-50 dark:bg-white/5 rounded-full flex-shrink-0 text-gray-500 dark:text-gray-400">
-                <Camera className="w-5 h-5" />
-              </button>
-              <div className="flex-1 bg-gray-50 dark:bg-[#202024] rounded-full flex items-center px-4 py-2">
-                <input type="text" placeholder="Type a message..." className="bg-transparent w-full focus:outline-none text-sm sm:text-sm text-gray-900 dark:text-white placeholder-gray-400" />
+            <div className="bg-white dark:bg-[#1c1c20] rounded-xl p-3 flex items-center justify-between border border-gray-100 dark:border-white/5 shadow-2xs">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-gray-100 dark:bg-white/5 rounded-lg flex items-center justify-center font-bold text-lg text-gray-500">
+                  {currentContact.package.icon}
+                </div>
+                <div>
+                  <h4 className="font-semibold text-sm text-gray-900 dark:text-white">{currentContact.package.title}</h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Tracking ID: {currentContact.package.trackingId}</p>
+                </div>
               </div>
-              <button className="w-10 h-10 flex items-center justify-center bg-yellow-400 text-black rounded-full flex-shrink-0 cursor-pointer">
-                <Mic className="w-5 h-5" />
+              <button className="bg-yellow-400 hover:bg-yellow-500 text-black text-xs font-semibold px-3 py-1.5 rounded-full cursor-pointer transition-colors">
+                View Details
               </button>
             </div>
+
+            <div className="flex justify-center my-1">
+              <span className="text-[10px] uppercase font-medium tracking-wider text-gray-400 dark:text-gray-500 bg-gray-200/50 dark:bg-white/5 px-2.5 py-0.5 rounded-full">
+                Today
+              </span>
+            </div>
+
+            {/* Render conversation messages */}
+            {currentMessages.map((msg) => {
+              const isUser = msg.sender === "user";
+
+              return (
+                <div
+                  key={msg.id}
+                  onContextMenu={(e) => handleOpenContextMenu(msg, e)}
+                  onTouchStart={() => handleTouchStart(msg)}
+                  onTouchEnd={handleTouchEnd}
+                  onTouchMove={handleTouchEnd}
+                  className={`flex gap-2 max-w-[85%] sm:max-w-[78%] group relative ${
+                    isUser ? "self-end flex-row-reverse" : "self-start"
+                  }`}
+                >
+                  {!isUser && (
+                    <div className="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-700 flex-shrink-0 mt-auto overflow-hidden">
+                      <img src={currentContact.avatar} alt={currentContact.name} className="w-full h-full object-cover" />
+                    </div>
+                  )}
+
+                  <div className="relative group/bubble">
+                    {/* Message Action Trigger Button (hover on desktop or tap) */}
+                    <button
+                      type="button"
+                      onClick={(e) => handleOpenContextMenu(msg, e)}
+                      className={`absolute top-1.5 opacity-0 group-hover/bubble:opacity-100 transition-opacity z-10 w-6 h-6 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 flex items-center justify-center cursor-pointer text-gray-700 dark:text-gray-300 ${
+                        isUser ? "-left-7" : "-right-7"
+                      }`}
+                      title="React or more options"
+                    >
+                      <MoreHorizontal className="w-3.5 h-3.5" />
+                    </button>
+
+                    {msg.type === "text" ? (
+                      <div
+                        className={`p-3 rounded-2xl relative select-text transition-shadow ${
+                          isUser
+                            ? "bg-yellow-400 text-gray-900 rounded-br-xs font-medium shadow-2xs"
+                            : "bg-white dark:bg-[#1c1c20] border border-gray-100 dark:border-white/5 rounded-bl-xs text-gray-900 dark:text-white shadow-2xs"
+                        } ${msg.isPinned ? "ring-2 ring-amber-400/80" : ""}`}
+                      >
+                        {msg.isPinned && (
+                          <div className="flex items-center gap-1 text-[10px] text-amber-800 dark:text-amber-400 font-semibold mb-1">
+                            <Pin className="w-3 h-3 fill-current" />
+                            <span>Pinned</span>
+                          </div>
+                        )}
+
+                        <p className="text-sm leading-relaxed">{msg.text}</p>
+
+                        <div className="flex items-center justify-end gap-1.5 mt-1">
+                          {msg.isEdited && (
+                            <span className="text-[9px] italic text-gray-600/70 dark:text-gray-400/70">
+                              (edited)
+                            </span>
+                          )}
+                          <span
+                            className={`text-[9.5px] ${
+                              isUser ? "text-gray-800/80" : "text-gray-400 dark:text-gray-500"
+                            }`}
+                          >
+                            {msg.time}
+                          </span>
+                          {isUser && <CheckCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-500 inline-block" />}
+                        </div>
+
+                        {/* Floating Reactions Pill */}
+                        {msg.reactions && msg.reactions.length > 0 && (
+                          <div
+                            onClick={(e) => handleOpenContextMenu(msg, e)}
+                            className="absolute -bottom-2 right-2 bg-white dark:bg-[#1e1e22] px-2 py-0.5 rounded-full border border-gray-100 dark:border-white/10 shadow-xs flex items-center gap-0.5 text-xs cursor-pointer hover:scale-105 transition-transform"
+                          >
+                            {msg.reactions.map((emoji, idx) => (
+                              <span key={idx}>{emoji}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      /* WhatsApp-Style Voice Note Bubble */
+                      <div className="relative">
+                        <WhatsAppVoiceNote
+                          key={msg.id}
+                          messageId={msg.id}
+                          audioUrl={msg.audioUrl || ""}
+                          duration={msg.audioDuration || 4}
+                          isUser={isUser}
+                          time={msg.time}
+                          currentPlayingId={currentlyPlayingAudioId}
+                          setCurrentPlayingId={setCurrentlyPlayingAudioId}
+                        />
+
+                        {/* Floating Reactions Pill on Audio Note */}
+                        {msg.reactions && msg.reactions.length > 0 && (
+                          <div
+                            onClick={(e) => handleOpenContextMenu(msg, e)}
+                            className="absolute -bottom-2 right-2 bg-white dark:bg-[#1e1e22] px-2 py-0.5 rounded-full border border-gray-100 dark:border-white/10 shadow-xs flex items-center gap-0.5 text-xs cursor-pointer hover:scale-105 transition-transform"
+                          >
+                            {msg.reactions.map((emoji, idx) => (
+                              <span key={idx}>{emoji}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            <div ref={chatBottomRef} />
           </div>
+
+          {/* Quick reply suggestion pills */}
+          {!isRecording && (
+            <div className="px-4 pt-2.5 pb-1 bg-white dark:bg-[#161618] border-t border-gray-100 dark:border-white/5">
+              <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
+                {[
+                  "Call me",
+                  "I'm outside",
+                  "What's your ETA?",
+                  "Item received, thank you!",
+                ].map((phrase, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleQuickSuggestion(phrase)}
+                    className="px-3 py-1.5 rounded-full border border-gray-200 dark:border-white/10 hover:border-yellow-400 dark:hover:border-yellow-400 text-xs whitespace-nowrap text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white hover:bg-yellow-50/50 dark:hover:bg-yellow-400/10 transition-all cursor-pointer shrink-0"
+                  >
+                    {phrase}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Editing message indicator */}
+          {editingMessageId && (
+            <div className="px-4 py-2 bg-yellow-50 dark:bg-yellow-950/20 border-t border-yellow-200/80 dark:border-yellow-400/20 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 text-yellow-800 dark:text-yellow-300 font-medium">
+                <Pencil className="w-3.5 h-3.5" />
+                <span>Editing message</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="text-gray-500 hover:text-gray-800 dark:hover:text-white p-1 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Bottom Input Area / WhatsApp Voice Note Recorder */}
+          <div className="p-3 sm:p-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] bg-white dark:bg-[#161618] border-t border-gray-100 dark:border-white/5">
+            {isRecording ? (
+              /* WhatsApp Voice Recording State Bar */
+              <div className="flex items-center justify-between gap-3 bg-red-50/70 dark:bg-red-950/20 border border-red-200/80 dark:border-red-500/20 rounded-full px-3.5 py-2 animate-in fade-in zoom-in-95 duration-200">
+                {/* Cancel / Trash Button */}
+                <button
+                  type="button"
+                  onClick={cancelVoiceRecording}
+                  className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 dark:text-red-400 transition-colors cursor-pointer shrink-0 active:scale-95"
+                  title="Discard voice note"
+                >
+                  <Trash2 className="w-5 h-5 stroke-[2]" />
+                </button>
+
+                {/* Blinking Red Recording Indicator & Duration */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                  </span>
+                  <span className="font-mono text-xs sm:text-sm font-semibold text-red-600 dark:text-red-400 min-w-[36px]">
+                    {formatAudioDuration(recordingSeconds)}
+                  </span>
+                </div>
+
+                {/* Animated WhatsApp Live Sound Waves */}
+                <div className="flex-1 flex items-center justify-center gap-1 px-2 h-7 overflow-hidden">
+                  {[4, 10, 16, 22, 12, 18, 26, 14, 8, 20, 24, 15, 11, 19, 13, 7].map((height, i) => (
+                    <span
+                      key={i}
+                      className="w-1 bg-red-500 dark:bg-red-400 rounded-full transition-all duration-150 ease-in-out"
+                      style={{
+                        height: `${Math.max(4, (height * ((recordingSeconds % 3) + 1.2)) % 26)}px`,
+                        opacity: 0.5 + ((i % 3) * 0.2),
+                      }}
+                    />
+                  ))}
+                </div>
+
+                {/* Stop and Send Button */}
+                <button
+                  type="button"
+                  onClick={sendVoiceRecording}
+                  className="w-10 h-10 flex items-center justify-center bg-yellow-400 hover:bg-yellow-500 text-black rounded-full shrink-0 shadow-md transition-all active:scale-90 cursor-pointer"
+                  title="Send voice note"
+                >
+                  <Send className="w-5 h-5 stroke-[2.2] ml-0.5" />
+                </button>
+              </div>
+            ) : (
+              /* Regular Text Input Bar with Dynamic Mic <-> Send Transition */
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="w-10 h-10 flex items-center justify-center bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full flex-shrink-0 text-gray-500 dark:text-gray-400 transition-colors cursor-pointer"
+                  title="Attach photo"
+                >
+                  <Camera className="w-5 h-5" />
+                </button>
+
+                <div className="flex-1 bg-gray-50 dark:bg-[#202024] rounded-full flex items-center px-4 py-2 border border-transparent focus-within:border-yellow-400 transition-colors">
+                  <input
+                    type="text"
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendText();
+                      }
+                    }}
+                    placeholder={
+                      editingMessageId
+                        ? "Edit your message..."
+                        : `Message ${currentContact.name}...`
+                    }
+                    className="bg-transparent w-full focus:outline-none text-sm text-gray-900 dark:text-white placeholder-gray-400"
+                  />
+                </div>
+
+                {/* Dynamic Button: Changes to Send icon when typing (or editing), Mic icon when empty */}
+                {inputText.trim().length > 0 || editingMessageId ? (
+                  <button
+                    type="button"
+                    onClick={handleSendText}
+                    className="w-10 h-10 flex items-center justify-center bg-yellow-400 hover:bg-yellow-500 text-black rounded-full flex-shrink-0 cursor-pointer transition-all duration-200 active:scale-95 shadow-sm animate-in zoom-in-75"
+                    title={editingMessageId ? "Save edit" : "Send message"}
+                  >
+                    {editingMessageId ? (
+                      <Check className="w-5 h-5 stroke-[2.5]" />
+                    ) : (
+                      <Send className="w-5 h-5 stroke-[2.2] ml-0.5" />
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={startVoiceRecording}
+                    className="w-10 h-10 flex items-center justify-center bg-yellow-400 hover:bg-yellow-500 text-black rounded-full flex-shrink-0 cursor-pointer transition-all duration-200 active:scale-90 hover:scale-105 shadow-sm"
+                    title="Tap to record voice note (WhatsApp style)"
+                  >
+                    <Mic className="w-5 h-5 stroke-[2.2]" />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ========================================================= */}
+          {/* WhatsApp-Style Message Context Menu & Reaction Modal Overlay */}
+          {/* Matches User Screenshot Exactly */}
+          {/* ========================================================= */}
+          {selectedMessageForMenu && (
+            <div
+              className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 backdrop-blur-md bg-black/40 animate-in fade-in duration-200"
+              onClick={handleCloseContextMenu}
+            >
+              {/* Active Highlighted Message Preview */}
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="max-w-md w-full flex flex-col items-center mb-3 animate-in zoom-in-95 duration-200"
+              >
+                <div
+                  className={`p-4 rounded-3xl max-w-[90%] sm:max-w-[80%] shadow-[0_15px_35px_rgba(0,0,0,0.25)] ${
+                    selectedMessageForMenu.sender === "user"
+                      ? "bg-yellow-400 text-gray-900 rounded-br-xs font-medium ring-4 ring-yellow-400/30"
+                      : "bg-white dark:bg-[#1c1c20] text-gray-900 dark:text-white rounded-bl-xs border border-gray-100 dark:border-white/10"
+                  }`}
+                >
+                  {selectedMessageForMenu.type === "text" ? (
+                    <p className="text-base sm:text-lg leading-snug">
+                      {selectedMessageForMenu.text}
+                    </p>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-gray-950 text-white flex items-center justify-center">
+                        <Play className="w-4 h-4 fill-current ml-0.5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold">Voice Note</p>
+                        <p className="text-xs text-gray-700">
+                          {formatAudioDuration(selectedMessageForMenu.audioDuration || 0)}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 1. Emoji Reaction Bar (Matches screenshot layout) */}
+                <div className="mt-3.5 relative">
+                  <div className="bg-white dark:bg-[#1e1e22] shadow-2xl rounded-full px-4 py-2 border border-gray-100 dark:border-white/10 flex items-center gap-2 sm:gap-2.5">
+                    {REACTION_EMOJIS.map((emoji) => {
+                      const isSelected = selectedMessageForMenu.reactions?.includes(emoji);
+                      return (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={() => handleAddReaction(emoji)}
+                          className={`text-2xl sm:text-[26px] leading-none hover:scale-130 active:scale-110 transition-transform cursor-pointer p-1 rounded-full ${
+                            isSelected ? "bg-yellow-400/20 scale-110" : ""
+                          }`}
+                          title={`React ${emoji}`}
+                        >
+                          {emoji}
+                        </button>
+                      );
+                    })}
+
+                    {/* Plus Button to toggle additional emojis */}
+                    <button
+                      type="button"
+                      onClick={() => setShowExtraEmojis((prev) => !prev)}
+                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 flex items-center justify-center text-gray-600 dark:text-gray-300 transition-transform hover:scale-110 cursor-pointer ml-0.5"
+                      title="More emojis"
+                    >
+                      <Plus className="w-4 h-4 stroke-[2.5]" />
+                    </button>
+                  </div>
+
+                  {/* Extra Emojis Popover */}
+                  {showExtraEmojis && (
+                    <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 bg-white dark:bg-[#1e1e22] shadow-2xl rounded-2xl p-2.5 border border-gray-100 dark:border-white/10 flex items-center gap-2 z-20 animate-in zoom-in-90 duration-150">
+                      {EXTRA_REACTION_EMOJIS.map((emoji) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={() => handleAddReaction(emoji)}
+                          className="text-xl hover:scale-130 transition-transform p-1 cursor-pointer"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Action Menu Card (Matches screenshot with icons on right) */}
+                <div className="w-64 sm:w-72 mt-3 bg-white dark:bg-[#1e1e22] rounded-2xl shadow-2xl border border-gray-100 dark:border-white/10 overflow-hidden divide-y divide-gray-100 dark:divide-white/5">
+                  {/* Copy Row */}
+                  <button
+                    type="button"
+                    onClick={handleCopyMessage}
+                    className="w-full px-4 py-3 flex items-center justify-between text-sm font-medium text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors"
+                  >
+                    <span>Copy</span>
+                    <Copy className="w-4 h-4 text-gray-500 dark:text-gray-400 stroke-[2]" />
+                  </button>
+
+                  {/* Pin Row */}
+                  <button
+                    type="button"
+                    onClick={handleTogglePinMessage}
+                    className="w-full px-4 py-3 flex items-center justify-between text-sm font-medium text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors"
+                  >
+                    <span>{selectedMessageForMenu.isPinned ? "Unpin" : "Pin"}</span>
+                    <Pin className={`w-4 h-4 stroke-[2] ${selectedMessageForMenu.isPinned ? "text-amber-500 fill-amber-500" : "text-gray-500 dark:text-gray-400"}`} />
+                  </button>
+
+                  {/* Edit Row (Only for user text messages) */}
+                  <button
+                    type="button"
+                    onClick={handleStartEditMessage}
+                    className="w-full px-4 py-3 flex items-center justify-between text-sm font-medium text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors"
+                  >
+                    <span>Edit</span>
+                    <Pencil className="w-4 h-4 text-gray-500 dark:text-gray-400 stroke-[2]" />
+                  </button>
+
+                  {/* Delete Row */}
+                  <button
+                    type="button"
+                    onClick={handleDeleteMessage}
+                    className="w-full px-4 py-3 flex items-center justify-between text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 cursor-pointer transition-colors"
+                  >
+                    <span>Delete</span>
+                    <Trash2 className="w-4 h-4 text-red-500 stroke-[2]" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Rate Rider Modal */}
+          <RateRiderModal
+            isOpen={isRateRiderOpen}
+            onClose={() => setIsRateRiderOpen(false)}
+            riderName={currentContact.name}
+            onSubmit={() => showToast("Rating submitted, thank you!")}
+          />
+
         </div>
       </div>
     );
   }
 
+  // Messages List & Hub Screen
   return (
     <div className="flex-1 flex flex-col bg-[#fcfcfc] dark:bg-[#0c0c0e] h-full overflow-y-auto transition-colors">
       <div className="w-full max-w-4xl 2xl:max-w-5xl mx-auto flex flex-col min-h-full bg-transparent border-0 md:border-x border-gray-200/70 dark:border-white/5 relative pb-24 md:pb-12 transition-colors">
@@ -132,9 +1094,9 @@ export default function Messages() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors cursor-pointer ${
                 activeTab === tab
-                  ? "bg-yellow-400 text-black font-semibold"
+                  ? "bg-yellow-400 text-black font-semibold shadow-xs"
                   : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5"
               }`}
             >
@@ -149,47 +1111,61 @@ export default function Messages() {
           <h2 className="text-sm font-semibold mb-4 text-gray-500 dark:text-gray-400">Updates</h2>
           
           {/* Updates List */}
-          <div className="bg-white dark:bg-[#1c1c20] border border-gray-100 dark:border-white/5 rounded-2xl p-4 mb-6 flex items-center justify-between cursor-pointer hover:border-gray-200 dark:hover:border-white/10 transition-colors">
-             <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-gray-100 dark:bg-white/5 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <span className="text-xs font-bold text-gray-800 dark:text-gray-200">GIG</span>
+          <div
+            onClick={() => setActiveChat("1")}
+            className="bg-white dark:bg-[#1c1c20] border border-gray-100 dark:border-white/5 rounded-2xl p-4 mb-6 flex items-center justify-between cursor-pointer hover:border-gray-200 dark:hover:border-white/10 transition-colors shadow-2xs"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-yellow-400/10 dark:bg-yellow-400/20 text-yellow-600 dark:text-yellow-400 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-xs">
+                <span>DART</span>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-bold bg-yellow-400 text-black px-2 py-0.5 rounded uppercase shadow-2xs">
+                    IN-TRANSIT
+                  </span>
                 </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                     <span className="text-[10px] font-bold bg-yellow-400 text-black px-2 py-0.5 rounded uppercase shadow-2xs">IN-TRANSIT</span>
-                  </div>
-                  <h3 className="font-bold text-sm text-gray-900 dark:text-white">Google pixel 9pro</h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">CTA 12mins • 1.2km away</p>
-                </div>
-             </div>
-             <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                <h3 className="font-bold text-sm text-gray-900 dark:text-white">Google pixel 9pro</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">CTA 12mins • 1.2km away</p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500" />
           </div>
 
           <h2 className="text-sm font-semibold mb-4 text-gray-500 dark:text-gray-400">Conversations</h2>
 
           {/* Conversations List */}
           <div className="space-y-2">
-            <div onClick={() => setActiveChat("1")} className="flex items-center justify-between p-3 rounded-2xl cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-3 transition-colors">
+            <div
+              onClick={() => setActiveChat("1")}
+              className="flex items-center justify-between p-3 rounded-2xl cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-3 transition-colors"
+            >
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden flex-shrink-0 relative">
-                   <img src="https://i.pravatar.cc/100?img=11" alt="avatar" className="w-full h-full object-cover" />
-                   <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-[#161618] rounded-full"></div>
+                  <img src="https://i.pravatar.cc/100?img=11" alt="avatar" className="w-full h-full object-cover" />
+                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-[#161618] rounded-full"></div>
                 </div>
                 <div>
                   <h4 className="font-semibold text-gray-900 dark:text-white text-sm">Divine Augustina</h4>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate w-48">Arriving in 4 minutes</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate w-48 flex items-center gap-1">
+                    <Mic className="w-3.5 h-3.5 text-blue-500 inline-block shrink-0" />
+                    <span>Voice note (0:05)</span>
+                  </p>
                 </div>
               </div>
               <div className="flex flex-col items-end gap-1">
-                 <span className="text-xs text-gray-400">Just Now</span>
-                 <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
+                <span className="text-xs text-gray-400">Just Now</span>
+                <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
               </div>
             </div>
 
-            <div onClick={() => setActiveChat("2")} className="flex items-center justify-between p-3 rounded-2xl cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-3 transition-colors">
+            <div
+              onClick={() => setActiveChat("2")}
+              className="flex items-center justify-between p-3 rounded-2xl cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-3 transition-colors"
+            >
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden flex-shrink-0">
-                   <img src="https://i.pravatar.cc/100?img=12" alt="avatar" className="w-full h-full object-cover" />
+                  <img src="https://i.pravatar.cc/100?img=12" alt="avatar" className="w-full h-full object-cover" />
                 </div>
                 <div>
                   <h4 className="font-semibold text-gray-900 dark:text-white text-sm">Hamzy Rider</h4>
@@ -197,14 +1173,17 @@ export default function Messages() {
                 </div>
               </div>
               <div className="flex flex-col items-end gap-1">
-                 <span className="text-xs text-gray-400">4 mins ago</span>
+                <span className="text-xs text-gray-400">4 mins ago</span>
               </div>
             </div>
             
-            <div onClick={() => setActiveChat("3")} className="flex items-center justify-between p-3 rounded-2xl cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-3 transition-colors">
+            <div
+              onClick={() => setActiveChat("3")}
+              className="flex items-center justify-between p-3 rounded-2xl cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-3 transition-colors"
+            >
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden flex-shrink-0">
-                   <img src="https://i.pravatar.cc/100?img=13" alt="avatar" className="w-full h-full object-cover" />
+                  <img src="https://i.pravatar.cc/100?img=13" alt="avatar" className="w-full h-full object-cover" />
                 </div>
                 <div>
                   <h4 className="font-semibold text-gray-900 dark:text-white text-sm">Muhammad abdul Kareem</h4>
@@ -212,7 +1191,7 @@ export default function Messages() {
                 </div>
               </div>
               <div className="flex flex-col items-end gap-1">
-                 <span className="text-xs text-gray-400">12:30 PM</span>
+                <span className="text-xs text-gray-400">12:30 PM</span>
               </div>
             </div>
           </div>
@@ -223,10 +1202,184 @@ export default function Messages() {
   );
 }
 
-function ChevronRight({ className }: { className?: string }) {
+/**
+ * WhatsApp Voice Note Component
+ * Includes Play/Pause button, interactive waveform seek scrubber, playback timing, and blue double-check marks.
+ */
+function WhatsAppVoiceNote({
+  messageId,
+  audioUrl,
+  duration,
+  isUser,
+  time,
+  currentPlayingId,
+  setCurrentPlayingId,
+}: {
+  messageId: string;
+  audioUrl: string;
+  duration: number;
+  isUser: boolean;
+  time: string;
+  currentPlayingId: string | null;
+  setCurrentPlayingId: (id: string | null) => void;
+}) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Initialize or update audio element
+  useEffect(() => {
+    const audio = new Audio(audioUrl);
+    audioRef.current = audio;
+
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+    };
+
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+      if (currentPlayingId === messageId) {
+        setCurrentPlayingId(null);
+      }
+    };
+
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("ended", handleEnded);
+
+    return () => {
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("ended", handleEnded);
+      audio.pause();
+      audio.src = "";
+    };
+  }, [audioUrl, messageId, currentPlayingId, setCurrentPlayingId]);
+
+  // Pause if another audio note starts playing
+  useEffect(() => {
+    if (currentPlayingId !== messageId && isPlaying) {
+      audioRef.current?.pause();
+      setIsPlaying(false);
+    }
+  }, [currentPlayingId, messageId, isPlaying]);
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+      setCurrentPlayingId(null);
+    } else {
+      setCurrentPlayingId(messageId);
+      audioRef.current.play().then(() => {
+        setIsPlaying(true);
+      }).catch((err) => {
+        console.warn("Audio play prevented:", err);
+      });
+    }
+  };
+
+  // Scrub waveform on click
+  const handleWaveformClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!audioRef.current) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const percentage = Math.max(0, Math.min(1, clickX / rect.width));
+    const targetTime = percentage * (duration || 1);
+    
+    audioRef.current.currentTime = targetTime;
+    setCurrentTime(targetTime);
+    if (!isPlaying) {
+      setCurrentPlayingId(messageId);
+      audioRef.current.play().then(() => setIsPlaying(true)).catch(console.warn);
+    }
+  };
+
+  const progressPercent = duration > 0 ? currentTime / duration : 0;
+
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-    </svg>
+    <div
+      className={`p-3 rounded-2xl min-w-[240px] sm:min-w-[280px] shadow-2xs ${
+        isUser
+          ? "bg-yellow-400 text-gray-950 rounded-br-xs"
+          : "bg-white dark:bg-[#1c1c20] border border-gray-100 dark:border-white/5 rounded-bl-xs text-gray-900 dark:text-white"
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        {/* Play/Pause Button */}
+        <button
+          type="button"
+          onClick={togglePlay}
+          className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90 cursor-pointer shadow-xs ${
+            isUser
+              ? "bg-gray-950 text-white hover:bg-gray-900"
+              : "bg-yellow-400 text-gray-950 hover:bg-yellow-500"
+          }`}
+          title={isPlaying ? "Pause voice note" : "Play voice note"}
+        >
+          {isPlaying ? (
+            <Pause className="w-4 h-4 fill-current" />
+          ) : (
+            <Play className="w-4 h-4 fill-current ml-0.5" />
+          )}
+        </button>
+
+        {/* WhatsApp Audio Waveform Bar */}
+        <div className="flex-1 flex flex-col justify-center">
+          <div
+            onClick={handleWaveformClick}
+            className="flex items-center gap-0.5 sm:gap-1 h-7 cursor-pointer py-1 group"
+            title="Click to seek"
+          >
+            {WAVEFORM_BAR_HEIGHTS.map((h, index) => {
+              const barFraction = index / WAVEFORM_BAR_HEIGHTS.length;
+              const isPlayed = barFraction <= progressPercent;
+
+              return (
+                <span
+                  key={index}
+                  className={`w-1 rounded-full transition-colors duration-100 ${
+                    isUser
+                      ? isPlayed
+                        ? "bg-gray-950"
+                        : "bg-gray-950/30"
+                      : isPlayed
+                      ? "bg-yellow-500 dark:bg-yellow-400"
+                      : "bg-gray-300 dark:bg-white/20"
+                  }`}
+                  style={{ height: `${h}px` }}
+                />
+              );
+            })}
+          </div>
+
+          {/* Time & Read status row */}
+          <div className="flex items-center justify-between text-[10px] mt-0.5">
+            <span
+              className={`font-mono font-medium ${
+                isUser ? "text-gray-800" : "text-gray-500 dark:text-gray-400"
+              }`}
+            >
+              {formatAudioDuration(isPlaying ? currentTime : duration)}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <span
+                className={`${
+                  isUser ? "text-gray-800/80" : "text-gray-400 dark:text-gray-500"
+                }`}
+              >
+                {time}
+              </span>
+              {isUser ? (
+                <CheckCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-500" />
+              ) : (
+                <Mic className="w-3 h-3 text-blue-500 inline-block" />
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

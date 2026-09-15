@@ -123,8 +123,8 @@ export default function AboutDart({ onBack }: AboutDartProps) {
 
       {/* Info Dialog Modal for Privacy, Terms, Licences */}
       {activeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white dark:bg-[#18181b] rounded-3xl p-6 sm:p-8 shadow-2xl border border-gray-100 dark:border-white/10 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full sm:max-w-md bg-white dark:bg-[#18181b] rounded-t-[32px] sm:rounded-3xl p-6 sm:p-8 shadow-2xl border border-gray-100 dark:border-white/10 animate-in slide-in-from-bottom duration-300 ease-out pb-[max(1.75rem,env(safe-area-inset-bottom,0px))] sm:pb-8">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white capitalize">
                 {activeModal === "privacy" && "Privacy Policy"}

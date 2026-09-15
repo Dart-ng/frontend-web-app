@@ -21,7 +21,7 @@ export default function PaymentMethod({ onBack }: PaymentMethodProps) {
     {
       id: "wallet",
       type: "wallet",
-      title: "Wallet",
+      title: "Dart Wallet",
       subtitle: "Instant payment with Dart balance (₦20,500.00)",
       isDefault: true,
     },
@@ -286,8 +286,8 @@ export default function PaymentMethod({ onBack }: PaymentMethodProps) {
 
       {/* Add Payment Method Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white dark:bg-[#18181b] rounded-3xl p-6 sm:p-7 shadow-2xl border border-gray-100 dark:border-white/10 animate-in zoom-in-95 duration-200 relative max-h-[90dvh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full sm:max-w-md bg-white dark:bg-[#18181b] rounded-t-[32px] sm:rounded-3xl p-6 sm:p-7 shadow-2xl border border-gray-100 dark:border-white/10 animate-in slide-in-from-bottom duration-300 ease-out relative max-h-[90dvh] overflow-y-auto pb-[max(1.75rem,env(safe-area-inset-bottom,0px))] sm:pb-7">
             
             {/* Header */}
             <div className="flex items-center justify-between mb-5">

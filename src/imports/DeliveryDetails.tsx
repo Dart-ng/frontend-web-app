@@ -19,18 +19,30 @@ import {
   Calendar,
   Clock,
   MapPin,
+  Package,
+  ShoppingBag,
 } from "lucide-react";
 import shoeImage from "../assets/nike_air_max_shoe.jpg";
 import ConfettiBackground from "../components/ConfettiBackground";
 import greenSuccessBadge from "../assets/good-mark.svg";
+import NotificationButton from "../components/NotificationButton";
 import linkedBoxSvg from "../assets/Linked-box.svg";
 import PackageStateIcon from "../components/PackageStateIcon";
+import {
+  cleanTrackingText,
+  detectCourier,
+  formatTrackingTime,
+  deriveStatusFromAction,
+  fetchParcelTracking,
+  TrackItem,
+} from "../utils/tracking";
 
 export interface DeliveryDetailsItem {
   id?: string;
   title?: string;
+  store?: string;
   trackingCode?: string;
-  status?: "Delivered" | "In-Transit" | "Cancelled" | "Pending";
+  status?: "Delivered" | "In-Transit" | "Cancelled" | "Pending" | "Ready for pickup";
   image?: string;
   fromLocation?: string;
   toLocation?: string;
@@ -55,6 +67,8 @@ export interface DeliveryDetailsItem {
   isArrived?: boolean;
   arrivedDate?: string;
   pickupTerminal?: string;
+  tracks?: TrackItem[];
+  payUrl?: string;
 }
 
 interface DeliveryDetailsProps {
@@ -74,16 +88,106 @@ export default function DeliveryDetails({
   const [inboundArrivedState, setInboundArrivedState] = useState<boolean>(
     Boolean(delivery?.isArrived || delivery?.status === "Delivered" || delivery?.status === "Ready for pickup")
   );
+  const [liveTracks, setLiveTracks] = useState<TrackItem[]>(delivery?.tracks || []);
+  const [livePayUrl, setLivePayUrl] = useState<string>(delivery?.payUrl || "");
+  const [isFetchingLive, setIsFetchingLive] = useState<boolean>(false);
+
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [isBookmarked, setIsBookmarked] = useState<boolean>(delivery?.rider?.isSaved || false);
+  const [isBooked, setIsBooked] = useState<boolean>(false);
+  const [showRiderChat, setShowRiderChat] = useState<boolean>(false);
+  const [showExpandedImage, setShowExpandedImage] = useState<boolean>(false);
+  const [chatInputText, setChatInputText] = useState<string>("");
+  const [chatMessages, setChatMessages] = useState([
+    {
+      id: "1",
+      sender: "rider",
+      text: `Hello! I'm ${delivery?.rider?.name || "Divine Augustina"}, your delivery rider for this order.`,
+      time: "10:12 AM",
+    },
+    {
+      id: "2",
+      sender: "user",
+      text: "Hi! Just checking in on the delivery status.",
+      time: "10:13 AM",
+    },
+    {
+      id: "3",
+      sender: "rider",
+      text:
+        delivery?.status === "Delivered"
+          ? "The package has been delivered safely! Thank you for choosing Dart."
+          : "I'm currently on my way with your package. I will notify you immediately as soon as I arrive!",
+      time: "10:14 AM",
+    },
+  ]);
+
+  // Synchronize live tracking data from API whenever an inbound package is viewed
+  useEffect(() => {
+    const rawCode = delivery?.trackingCode || "";
+    const cleanCode = rawCode.replace(/^[#]/, "").replace(/^42324-HUD-/, "").trim();
+
+    if (cleanCode && (delivery?.isInbound || cleanCode.toUpperCase().startsWith("NG") || cleanCode.toUpperCase().startsWith("SF"))) {
+      let isMounted = true;
+      setIsFetchingLive(true);
+      fetchParcelTracking(cleanCode).then((res) => {
+        if (isMounted && res.success && res.data) {
+          if (Array.isArray(res.data.tracks)) {
+            setLiveTracks(res.data.tracks);
+          }
+          if (res.data.payUrl) {
+            setLivePayUrl(res.data.payUrl);
+          }
+        }
+        if (isMounted) setIsFetchingLive(false);
+      });
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [delivery?.trackingCode, delivery?.isInbound]);
 
   // If this is an inbound package:
   if (delivery?.isInbound) {
+    const rawCode = delivery.trackingCode || "";
+    const cleanCode = rawCode.replace(/^[#]/, "").replace(/^42324-HUD-/, "").trim();
+    const latestTrack = liveTracks.length > 0 ? liveTracks[0] : null;
+    const earliestTrack = liveTracks.length > 0 ? liveTracks[liveTracks.length - 1] : null;
+
+    const activeCourier = delivery.courier && delivery.courier !== "AliExpress" 
+      ? delivery.courier 
+      : detectCourier(cleanCode);
+
+    const activeShippedDate = earliestTrack?.time 
+      ? formatTrackingTime(earliestTrack.time) 
+      : (delivery.shippedDate || "Recent");
+
+    const activeLastScan = latestTrack?.time 
+      ? formatTrackingTime(latestTrack.time) 
+      : (delivery.estimatedArrival || "In Transit");
+
+    const activeOrigin = cleanTrackingText(earliestTrack?.msgEng || earliestTrack?.actionName) 
+      || (delivery.fromLocation && delivery.fromLocation !== "China, Beijing" ? delivery.fromLocation : "Origin Terminal");
+
+    const activeDestination = cleanTrackingText(latestTrack?.msgEng || latestTrack?.actionName) 
+      || (delivery.toLocation && delivery.toLocation !== "Akpakpava, Benin" ? delivery.toLocation : "Distribution Hub");
+
+    const activeStatus = latestTrack?.actionName 
+      ? deriveStatusFromAction(latestTrack.actionName) 
+      : (delivery.status || "In-Transit");
+
+    const activeStatusBadge = latestTrack?.actionName || delivery.status || "In-Transit";
+    const activeTitle = delivery.title && !delivery.title.includes("Black Hoodie") 
+      ? delivery.title 
+      : (latestTrack?.actionName ? `${latestTrack.actionName} - ${cleanCode}` : `Inbound Shipment (${cleanCode})`);
+
     // ----------------------------------------------------
     // SCREEN: PACKAGE HAS ARRIVED & READY FOR PICKUP
     // ----------------------------------------------------
     if (inboundArrivedState) {
       return (
         <div className="w-full flex-1 flex flex-col min-h-screen bg-white dark:bg-[#0c0c0e] relative select-none overflow-hidden animate-in fade-in duration-300">
-          {/* Celebration Confetti in upper half (Hardcoded Static SVG) */}
+          {/* Celebration Confetti in upper half */}
           <div className="absolute top-0 left-0 right-0 h-72 sm:h-80 pointer-events-none overflow-hidden z-0 flex justify-center opacity-95">
             <ConfettiBackground />
           </div>
@@ -126,7 +230,7 @@ export default function DeliveryDetails({
                 Your package has arrived 🎉
               </h1>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-2 text-center max-w-xs leading-relaxed">
-                Your package is ready for pickup at {delivery.pickupTerminal || "GIG Terminal, Auchi, Edo state"}
+                Your package is ready for pickup at {activeDestination || delivery.pickupTerminal || "Distribution Terminal"}
               </p>
 
               {/* Package Pickup Details Card */}
@@ -134,7 +238,7 @@ export default function DeliveryDetails({
                 <div className="pb-3 flex items-center justify-between gap-3">
                   <div>
                     <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white">
-                      {delivery.title || "Black Hoodie XXL"}
+                      {activeTitle}
                     </h3>
                     <span className="text-[10px] font-bold text-yellow-700 dark:text-yellow-400 bg-yellow-400/20 px-2 py-0.5 rounded uppercase tracking-wider mt-1 inline-block">
                       READY FOR PICKUP
@@ -146,12 +250,12 @@ export default function DeliveryDetails({
                 </div>
                 <div className="py-3">
                   <p className="font-mono text-xs sm:text-sm text-gray-400 dark:text-gray-500">
-                    ID: {delivery.trackingCode || "NGS213-2324-23243"}
+                    ID: {cleanCode || delivery.trackingCode}
                   </p>
                 </div>
                 <div className="pt-3">
                   <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                    Arrived on: {delivery.arrivedDate || "Jul 30th 2026 • 12:47 PM"}
+                    Arrived on: {activeLastScan || delivery.arrivedDate || "Recent"}
                   </p>
                 </div>
               </div>
@@ -186,7 +290,7 @@ export default function DeliveryDetails({
     }
 
     // ----------------------------------------------------
-    // SCREEN: IN-TRANSIT 4-STOP ROUTE STEPPER SCREEN
+    // SCREEN: IN-TRANSIT ROUTE STEPPER & DETAILS SCREEN
     // ----------------------------------------------------
     return (
       <div className="w-full flex-1 flex flex-col min-h-full bg-[#fcfcfc] dark:bg-[#0c0c0e] pb-12 transition-colors animate-in fade-in duration-200">
@@ -219,7 +323,7 @@ export default function DeliveryDetails({
               Package details
             </h1>
             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Review the details before adding to your packages.
+              Live tracking information from carrier
             </p>
           </div>
 
@@ -235,16 +339,30 @@ export default function DeliveryDetails({
             </div>
 
             <div className="min-w-0 flex-1">
-              {/* Category Ticker in Complete Dart Yellow with Black Text */}
-              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-yellow-400 text-black text-[11px] font-bold uppercase tracking-wider mb-1.5 shadow-2xs">
-                <Shirt className="w-3.5 h-3.5 stroke-[2.2]" />
-                <span>{delivery.category || "CLOTHES"}</span>
+              {/* Category & Status Badges */}
+              <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-yellow-400 text-black text-[11px] font-bold uppercase tracking-wider shadow-2xs">
+                  <Package className="w-3.5 h-3.5 stroke-[2.2]" />
+                  <span>{delivery.category || "PARCEL"}</span>
+                </span>
+                {delivery.store && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-yellow-50 dark:bg-yellow-400/10 text-yellow-800 dark:text-yellow-300 text-[10px] font-bold uppercase tracking-wider border border-yellow-200/60 dark:border-yellow-400/20">
+                    From {delivery.store}
+                  </span>
+                )}
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                  activeStatus === "Delivered"
+                    ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400"
+                    : "bg-yellow-100 dark:bg-yellow-400/20 text-yellow-800 dark:text-yellow-400"
+                }`}>
+                  {activeStatusBadge}
+                </span>
               </div>
               <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white truncate">
-                {delivery.title || "Black Hoodie XXL"}
+                {activeTitle}
               </h3>
               <p className="font-mono text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">
-                {delivery.trackingCode || "NGS213-2324-23243"}
+                {cleanCode || delivery.trackingCode}
               </p>
             </div>
           </div>
@@ -260,9 +378,24 @@ export default function DeliveryDetails({
                 <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Courier</span>
               </div>
               <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                {delivery.courier || "AliExpress"}
+                {activeCourier}
               </span>
             </div>
+
+            {/* Ordered from store (if set) */}
+            {delivery.store && (
+              <div className="flex items-center justify-between p-4 sm:p-4.5">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-600 dark:text-gray-300 shrink-0">
+                    <ShoppingBag className="w-4.5 h-4.5 text-yellow-500" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Ordered from</span>
+                </div>
+                <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                  {delivery.store}
+                </span>
+              </div>
+            )}
 
             {/* Shipped on */}
             <div className="flex items-center justify-between p-4 sm:p-4.5">
@@ -273,118 +406,159 @@ export default function DeliveryDetails({
                 <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Shipped on</span>
               </div>
               <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                {delivery.shippedDate || "Jun 28th 2026"}
+                {activeShippedDate}
               </span>
             </div>
 
-            {/* Estimated Arrival */}
+            {/* Last Scanned */}
             <div className="flex items-center justify-between p-4 sm:p-4.5">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-600 dark:text-gray-300 shrink-0">
                   <Clock className="w-4.5 h-4.5" />
                 </div>
-                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Estimated Arrival</span>
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Last Scanned</span>
               </div>
               <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                {delivery.estimatedArrival || "Jul 30th 2026"}
+                {activeLastScan}
               </span>
             </div>
           </div>
 
-          {/* Card 3: 4-Stop Tracking Route Stepper */}
-          <div className="bg-white dark:bg-[#18181b] border border-gray-100 dark:border-white/5 rounded-2xl p-4 sm:p-5 shadow-xs mb-8">
-            <div className="flex flex-col gap-6 relative">
-              {/* Connecting Vertical Dashed Line */}
-              <div className="absolute left-2.5 top-3.5 bottom-3.5 w-px border-l-2 border-dashed border-gray-300 dark:border-gray-700 -translate-x-1/2" />
-
-              {/* Stop 1 */}
-              <div className="flex items-start gap-3.5 relative z-10">
-                <div className="w-5 h-5 rounded-full bg-yellow-400 border-2 border-yellow-500 dark:border-yellow-300 shrink-0 mt-0.5 shadow-2xs" />
-                <div className="min-w-0 flex-1">
-                  <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 block">
-                    INBOUND FROM
-                  </span>
-                  <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mt-0.5">
-                    {delivery.fromLocation || "China, Beijing"}
-                  </p>
-                </div>
+          {/* Pay Customs / Duty URL Notice from API if available */}
+          {livePayUrl && (
+            <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-xs">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wide">
+                  Customs / Duty Pending
+                </p>
+                <p className="text-xs text-amber-700 dark:text-amber-400/90 mt-0.5 truncate">
+                  Online duty payment available for this package
+                </p>
               </div>
-
-              {/* Stop 2 */}
-              <div className="flex items-start gap-3.5 relative z-10">
-                <div className="w-5 h-5 rounded-full bg-yellow-400 border-2 border-yellow-500 dark:border-yellow-300 shrink-0 mt-0.5 shadow-2xs" />
-                <div className="min-w-0 flex-1">
-                  <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 block">
-                    DROP-OFF LOCATION
-                  </span>
-                  <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mt-0.5">
-                    Akpakpava, Benin
-                  </p>
-                </div>
-              </div>
-
-              {/* Stop 3 */}
-              <div className="flex items-start gap-3.5 relative z-10">
-                <div className="w-5 h-5 rounded-full bg-yellow-400 border-2 border-yellow-500 dark:border-yellow-300 shrink-0 mt-0.5 shadow-2xs" />
-                <div className="min-w-0 flex-1">
-                  <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 block">
-                    DROP-OFF LOCATION
-                  </span>
-                  <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mt-0.5">
-                    Akpakpava, Benin
-                  </p>
-                </div>
-              </div>
-
-              {/* Stop 4 (Destination with Red Map Pin) */}
-              <div className="flex items-start gap-3.5 relative z-10">
-                <div className="w-5 h-5 flex items-center justify-center text-red-500 shrink-0 mt-0.5">
-                  <MapPin className="w-5 h-5 fill-red-500/20 stroke-red-500" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 block">
-                    DROP-OFF LOCATION
-                  </span>
-                  <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mt-0.5">
-                    {delivery.toLocation || "Akpakpava, Benin"}
-                  </p>
-                </div>
-              </div>
+              <a 
+                href={livePayUrl} 
+                target="_blank" 
+                rel="noreferrer"
+                className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold text-xs transition-all shrink-0 shadow-xs"
+              >
+                Pay Now
+              </a>
             </div>
+          )}
+
+          {/* Card 3: Real Tracking Milestones Stepper */}
+          <div className="bg-white dark:bg-[#18181b] border border-gray-100 dark:border-white/5 rounded-2xl p-4 sm:p-5 shadow-xs mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                Tracking Milestones {liveTracks.length > 0 ? `(${liveTracks.length})` : ""}
+              </h4>
+              {liveTracks.length > 0 && (
+                <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-0.5 rounded-full">
+                  Live API Synced
+                </span>
+              )}
+            </div>
+
+            {liveTracks.length > 0 ? (
+              <div className="flex flex-col gap-6 relative">
+                {/* Connecting Vertical Dashed Line */}
+                <div className="absolute left-2.5 top-3.5 bottom-3.5 w-px border-l-2 border-dashed border-gray-300 dark:border-gray-700 -translate-x-1/2" />
+
+                {liveTracks.map((tr, idx) => {
+                  const isLatest = idx === 0;
+                  const isEarliest = idx === liveTracks.length - 1;
+                  const eventTitle = tr.actionName || tr.status || "Status Update";
+                  const eventMsg = cleanTrackingText(tr.msgEng || tr.message);
+
+                  return (
+                    <div key={idx} className="flex items-start gap-3.5 relative z-10">
+                      {/* Node Icon/Marker */}
+                      {isLatest ? (
+                        <div className="w-5 h-5 flex items-center justify-center text-red-500 shrink-0 mt-0.5">
+                          <MapPin className="w-5 h-5 fill-red-500/20 stroke-red-500 animate-bounce" />
+                        </div>
+                      ) : (
+                        <div className={`w-5 h-5 rounded-full border-2 shrink-0 mt-0.5 shadow-2xs ${
+                          isEarliest 
+                            ? "bg-yellow-400 border-yellow-500 dark:border-yellow-300"
+                            : "bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-600"
+                        }`} />
+                      )}
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className={`text-[10px] sm:text-[11px] font-bold uppercase tracking-wider block ${
+                            isLatest ? "text-yellow-600 dark:text-yellow-400" : "text-gray-400 dark:text-gray-500"
+                          }`}>
+                            {isLatest ? "CURRENT STATION" : isEarliest ? "INBOUND ORIGIN" : "TRANSIT HUB"}
+                          </span>
+                          {tr.time && (
+                            <span className="text-[11px] text-gray-400 dark:text-gray-500 font-mono">
+                              {formatTrackingTime(tr.time)}
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mt-0.5">
+                          {eventTitle}
+                        </p>
+
+                        {eventMsg && eventMsg !== eventTitle && (
+                          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mt-0.5 leading-relaxed">
+                            {eventMsg}
+                          </p>
+                        )}
+
+                        {(tr.scanSource || tr.location) && (
+                          <span className="text-[11px] text-gray-400 dark:text-gray-500 block mt-1">
+                            {tr.location ? `📍 ${tr.location}` : ""} {tr.scanSource ? `• ${tr.scanSource}` : ""}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* Fallback 2-stop stepper when no API tracks loaded */
+              <div className="flex flex-col gap-6 relative">
+                {/* Connecting Vertical Dashed Line */}
+                <div className="absolute left-2.5 top-3.5 bottom-3.5 w-px border-l-2 border-dashed border-gray-300 dark:border-gray-700 -translate-x-1/2" />
+
+                {/* Stop 1 */}
+                <div className="flex items-start gap-3.5 relative z-10">
+                  <div className="w-5 h-5 rounded-full bg-yellow-400 border-2 border-yellow-500 dark:border-yellow-300 shrink-0 mt-0.5 shadow-2xs" />
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 block">
+                      INBOUND FROM
+                    </span>
+                    <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mt-0.5">
+                      {activeOrigin}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Stop 2 */}
+                <div className="flex items-start gap-3.5 relative z-10">
+                  <div className="w-5 h-5 flex items-center justify-center text-red-500 shrink-0 mt-0.5">
+                    <MapPin className="w-5 h-5 fill-red-500/20 stroke-red-500" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 block">
+                      CURRENT HUB / DESTINATION
+                    </span>
+                    <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mt-0.5">
+                      {activeDestination}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
     );
   }
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [isBookmarked, setIsBookmarked] = useState<boolean>(delivery?.rider?.isSaved || false);
-  const [isBooked, setIsBooked] = useState<boolean>(false);
-  const [showRiderChat, setShowRiderChat] = useState<boolean>(false);
-  const [showExpandedImage, setShowExpandedImage] = useState<boolean>(false);
-  const [chatInputText, setChatInputText] = useState<string>("");
-  const [chatMessages, setChatMessages] = useState([
-    {
-      id: "1",
-      sender: "rider",
-      text: `Hello! I'm ${delivery?.rider?.name || "Divine Augustina"}, your delivery rider for this order.`,
-      time: "10:12 AM",
-    },
-    {
-      id: "2",
-      sender: "user",
-      text: "Hi! Just checking in on the delivery status.",
-      time: "10:13 AM",
-    },
-    {
-      id: "3",
-      sender: "rider",
-      text:
-        delivery?.status === "Delivered"
-          ? "The package has been delivered safely! Thank you for choosing Dart."
-          : "I'm currently on my way with your package. I will notify you immediately as soon as I arrive!",
-      time: "10:14 AM",
-    },
-  ]);
 
   // Defaults matching the exact reference design
   const item: DeliveryDetailsItem = {
@@ -668,13 +842,12 @@ export default function DeliveryDetails({
           Delivery information
         </h1>
 
-        <button
-          onClick={onOpenNotifications}
-          className="w-10 h-10 rounded-full bg-yellow-400 hover:bg-yellow-500 flex items-center justify-center text-black shrink-0 shadow-xs cursor-pointer touch-manipulation transition-transform active:scale-95"
-          aria-label="Notifications"
-        >
-          <Bell className="w-4.5 h-4.5 fill-black" />
-        </button>
+        <NotificationButton 
+          variant="standard" 
+          onClick={onOpenNotifications} 
+        />
+        {/* Spacer to keep title centered on desktop when notification button is hidden */}
+        <div className="w-10 hidden xl:block" aria-hidden="true" />
       </div>
 
       {/* Main Content Container */}

@@ -259,7 +259,7 @@ export default function SendPackageModal({
       {mode === "prompt" && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="w-full sm:max-w-[540px] md:max-w-[620px] bg-white dark:bg-[#18181b] rounded-t-[32px] sm:rounded-[32px] p-6 sm:p-8 md:p-9 border border-gray-100 dark:border-white/10 shadow-2xl relative z-10 animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 transition-colors max-h-[92dvh] overflow-y-auto pb-[max(1.75rem,env(safe-area-inset-bottom,0px))] sm:pb-8"
+          className="w-full sm:max-w-[540px] md:max-w-[620px] bg-white dark:bg-[#18181b] rounded-t-[32px] sm:rounded-[32px] p-6 sm:p-8 md:p-9 border border-gray-100 dark:border-white/10 shadow-2xl relative z-10 animate-in slide-in-from-bottom duration-300 ease-out transition-colors max-h-[92dvh] overflow-y-auto pb-[max(1.75rem,env(safe-area-inset-bottom,0px))] sm:pb-8"
         >
           {/* Pull handle bar for mobile */}
           <div
@@ -332,7 +332,7 @@ export default function SendPackageModal({
       {mode === "camera" && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="fixed inset-0 z-[80] sm:relative sm:inset-auto sm:z-10 w-full h-full sm:h-auto sm:max-w-[560px] md:max-w-[640px] bg-[#121214] text-white sm:rounded-[36px] sm:border sm:border-white/10 overflow-hidden shadow-2xl flex flex-col justify-between animate-in zoom-in-95 duration-200 select-none"
+          className="fixed inset-0 z-[80] sm:relative sm:inset-auto sm:z-10 w-full h-full sm:h-auto sm:max-w-[560px] md:max-w-[640px] bg-[#121214] text-white sm:rounded-[36px] sm:border sm:border-white/10 overflow-hidden shadow-2xl flex flex-col justify-between animate-in slide-in-from-bottom duration-300 ease-out select-none"
           style={{ maxHeight: "100dvh" }}
         >
           {/* Top Bar Overlay */}
@@ -458,7 +458,7 @@ export default function SendPackageModal({
       {mode === "preview" && capturedImage && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="fixed inset-0 z-[80] sm:relative sm:inset-auto sm:z-10 w-full h-full sm:h-auto sm:max-w-[560px] md:max-w-[640px] bg-[#121214] text-white sm:rounded-[36px] sm:border sm:border-white/10 overflow-hidden shadow-2xl flex flex-col justify-between animate-in zoom-in-95 duration-200 select-none"
+          className="fixed inset-0 z-[80] sm:relative sm:inset-auto sm:z-10 w-full h-full sm:h-auto sm:max-w-[560px] md:max-w-[640px] bg-[#121214] text-white sm:rounded-[36px] sm:border sm:border-white/10 overflow-hidden shadow-2xl flex flex-col justify-between animate-in slide-in-from-bottom duration-300 ease-out select-none"
           style={{ maxHeight: "100dvh" }}
         >
           {/* Top Bar */}
