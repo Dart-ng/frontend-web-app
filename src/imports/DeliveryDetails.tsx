@@ -641,7 +641,7 @@ export default function DeliveryDetails({
 
   if (showRiderChat) {
     return (
-      <div className="w-full flex-1 min-h-full h-full flex flex-col bg-[#fcfcfc] dark:bg-[#0c0c0e] animate-in fade-in duration-200 pb-28 md:pb-16">
+      <div className="w-full flex-1 min-h-full h-full flex flex-col bg-[#fcfcfc] dark:bg-[#0c0c0e] animate-in fade-in duration-200 pb-0 md:pb-0">
         {/* Chat Header */}
         <div className="px-4 sm:px-6 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-3.5 flex items-center justify-between border-b border-gray-100 dark:border-white/5 sticky top-0 bg-white/95 dark:bg-[#161618]/95 backdrop-blur-md z-20 shadow-xs">
           <div className="flex items-center gap-3 min-w-0">
@@ -765,7 +765,7 @@ export default function DeliveryDetails({
         </div>
 
         {/* Quick Suggestion Pills & Input Area */}
-        <div className="p-3 sm:p-4 bg-white dark:bg-[#161618] border-t border-gray-100 dark:border-white/5 shrink-0">
+        <div className="p-3 sm:p-4 pb-[max(1rem,env(safe-area-inset-bottom,0.75rem))] bg-white dark:bg-[#161618] border-t border-gray-100 dark:border-white/5 shrink-0">
           {/* Horizontal Quick Pills */}
           <div className="flex gap-2 mb-2.5 overflow-x-auto pb-1 hide-scrollbar">
             {[

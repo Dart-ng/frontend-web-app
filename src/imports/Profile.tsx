@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
   ArrowLeft,
-  Bell,
   MapPin,
   Mail,
   Phone,
@@ -13,6 +12,7 @@ import {
   ShieldCheck,
   Edit3,
 } from "lucide-react";
+import NotificationButton from "../components/NotificationButton";
 import { UserProfileInfo } from "./PersonalInformation";
 
 interface ProfileProps {
@@ -72,15 +72,12 @@ export default function Profile({
           Profile
         </h1>
 
-        {/* Yellow Circular Notification Bell Button */}
-        <button
-          type="button"
+        {/* Notification Bell Button (Matches Home Notification Icon) */}
+        <NotificationButton
+          variant="standard"
           onClick={onOpenNotifications}
-          className="w-10 h-10 rounded-full bg-[#FFCC00] hover:bg-[#f5c400] text-gray-950 flex items-center justify-center shadow-xs transition-transform active:scale-95 cursor-pointer"
-          title="Notifications"
-        >
-          <Bell className="w-5 h-5 fill-current text-gray-950" />
-        </button>
+          hideOnDesktop={false}
+        />
       </div>
 
       {/* Main Content Area */}

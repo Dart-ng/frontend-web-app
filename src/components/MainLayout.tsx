@@ -26,6 +26,7 @@ type Tab = "home" | "packages" | "wallet" | "messages" | "account";
 export default function MainLayout() {
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [inPackageProcedure, setInPackageProcedure] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const { isNotificationsOpen, openNotifications, closeNotifications } = useNotifications();
   const { resolvedTheme, toggleTheme } = useTheme();
 
@@ -57,10 +58,11 @@ export default function MainLayout() {
   };
 
   // Bottom navigation visibility on mobile screens:
-  // Visible ONLY on Home (idle), Packages (idle), and Messages screens.
-  // Hidden during package procedure screens (SendPackage, RequestPickup, DeliveryDetails) or subpages.
+  // Visible ONLY on Home (idle), Packages (idle), and Messages list (when no active chat conversation is open).
+  // Hidden during package procedure screens (SendPackage, RequestPickup, DeliveryDetails) or active chat screens.
   const isBottomNavVisible =
     !inPackageProcedure &&
+    !isChatOpen &&
     (activeTab === "home" || activeTab === "packages" || activeTab === "messages");
 
   return (
@@ -288,7 +290,7 @@ export default function MainLayout() {
             onOpenNotifications={openNotifications}
           />
         )}
-        {activeTab === "messages" && <MessagesScreen />}
+        {activeTab === "messages" && <MessagesScreen onChatOpenChange={setIsChatOpen} />}
         {activeTab === "account" && (
           <AccountScreen 
             onOpenNotifications={openNotifications} 

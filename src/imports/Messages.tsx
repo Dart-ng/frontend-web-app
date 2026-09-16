@@ -104,9 +104,20 @@ const WAVEFORM_BAR_HEIGHTS = [
 const REACTION_EMOJIS = ["👍", "🙂", "😊", "😒", "💖", "😄", "🙃", "👌"];
 const EXTRA_REACTION_EMOJIS = ["❤️", "🔥", "🎉", "🙏", "👏", "😂", "😍", "⚡", "🚀", "💯"];
 
-export default function Messages() {
+export interface MessagesProps {
+  onChatOpenChange?: (isOpen: boolean) => void;
+}
+
+export default function Messages({ onChatOpenChange }: MessagesProps = {}) {
   const [activeTab, setActiveTab] = useState<Tab>("All");
   const [activeChat, setActiveChat] = useState<string | null>(null);
+
+  useEffect(() => {
+    onChatOpenChange?.(activeChat !== null);
+    return () => {
+      onChatOpenChange?.(false);
+    };
+  }, [activeChat, onChatOpenChange]);
 
   // Initial demo messages per contact
   const [messagesByChat, setMessagesByChat] = useState<Record<string, ChatMessage[]>>(() => {
@@ -916,27 +927,26 @@ export default function Messages() {
 
           {/* ========================================================= */}
           {/* WhatsApp-Style Message Context Menu & Reaction Modal Overlay */}
-          {/* Matches User Screenshot Exactly */}
           {/* ========================================================= */}
           {selectedMessageForMenu && (
             <div
-              className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 backdrop-blur-md bg-black/40 animate-in fade-in duration-200"
+              className="fixed inset-0 z-50 flex flex-col items-center justify-center p-3 sm:p-4 backdrop-blur-md bg-black/50 animate-in fade-in duration-200 overflow-y-auto overscroll-contain"
               onClick={handleCloseContextMenu}
             >
-              {/* Active Highlighted Message Preview */}
+              {/* Active Highlighted Message Preview & Reaction Bar */}
               <div
                 onClick={(e) => e.stopPropagation()}
-                className="max-w-md w-full flex flex-col items-center mb-3 animate-in zoom-in-95 duration-200"
+                className="max-w-md w-full flex flex-col items-center my-auto py-4 animate-in zoom-in-95 duration-200"
               >
                 <div
-                  className={`p-4 rounded-3xl max-w-[90%] sm:max-w-[80%] shadow-[0_15px_35px_rgba(0,0,0,0.25)] ${
+                  className={`p-3.5 sm:p-4 rounded-3xl max-w-[92%] sm:max-w-[80%] shadow-[0_15px_35px_rgba(0,0,0,0.25)] max-h-40 overflow-y-auto ${
                     selectedMessageForMenu.sender === "user"
                       ? "bg-yellow-400 text-gray-900 rounded-br-xs font-medium ring-4 ring-yellow-400/30"
                       : "bg-white dark:bg-[#1c1c20] text-gray-900 dark:text-white rounded-bl-xs border border-gray-100 dark:border-white/10"
                   }`}
                 >
                   {selectedMessageForMenu.type === "text" ? (
-                    <p className="text-base sm:text-lg leading-snug">
+                    <p className="text-sm sm:text-base leading-snug break-words">
                       {selectedMessageForMenu.text}
                     </p>
                   ) : (
@@ -954,9 +964,9 @@ export default function Messages() {
                   )}
                 </div>
 
-                {/* 1. Emoji Reaction Bar (Matches screenshot layout) */}
-                <div className="mt-3.5 relative">
-                  <div className="bg-white dark:bg-[#1e1e22] shadow-2xl rounded-full px-4 py-2 border border-gray-100 dark:border-white/10 flex items-center gap-2 sm:gap-2.5">
+                {/* 1. Emoji Reaction Bar (Mobile-friendly, no overflow, touch-optimized) */}
+                <div className="mt-3 relative w-full flex flex-col items-center px-2">
+                  <div className="bg-white dark:bg-[#1e1e22] shadow-2xl rounded-full px-2.5 sm:px-4 py-1.5 sm:py-2 border border-gray-100 dark:border-white/10 flex items-center justify-center gap-1 sm:gap-2 max-w-full overflow-x-auto no-scrollbar touch-pan-x">
                     {REACTION_EMOJIS.map((emoji) => {
                       const isSelected = selectedMessageForMenu.reactions?.includes(emoji);
                       return (
@@ -964,12 +974,12 @@ export default function Messages() {
                           key={emoji}
                           type="button"
                           onClick={() => handleAddReaction(emoji)}
-                          className={`text-2xl sm:text-[26px] leading-none hover:scale-130 active:scale-110 transition-transform cursor-pointer p-1 rounded-full ${
+                          className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-xl sm:text-2xl leading-none hover:scale-125 active:scale-110 transition-transform cursor-pointer rounded-full shrink-0 touch-manipulation ${
                             isSelected ? "bg-yellow-400/20 scale-110" : ""
                           }`}
                           title={`React ${emoji}`}
                         >
-                          {emoji}
+                          <span>{emoji}</span>
                         </button>
                       );
                     })}
@@ -978,37 +988,37 @@ export default function Messages() {
                     <button
                       type="button"
                       onClick={() => setShowExtraEmojis((prev) => !prev)}
-                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 flex items-center justify-center text-gray-600 dark:text-gray-300 transition-transform hover:scale-110 cursor-pointer ml-0.5"
+                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 active:scale-95 flex items-center justify-center text-gray-600 dark:text-gray-300 transition-transform hover:scale-110 cursor-pointer shrink-0 ml-0.5 touch-manipulation"
                       title="More emojis"
                     >
                       <Plus className="w-4 h-4 stroke-[2.5]" />
                     </button>
                   </div>
 
-                  {/* Extra Emojis Popover */}
+                  {/* Extra Emojis Popover (Responsive 5-column grid that fits all mobile screens) */}
                   {showExtraEmojis && (
-                    <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 bg-white dark:bg-[#1e1e22] shadow-2xl rounded-2xl p-2.5 border border-gray-100 dark:border-white/10 flex items-center gap-2 z-20 animate-in zoom-in-90 duration-150">
+                    <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 bg-white dark:bg-[#1e1e22] shadow-2xl rounded-2xl p-2.5 sm:p-3 border border-gray-100 dark:border-white/10 grid grid-cols-5 gap-1.5 sm:gap-2 z-30 animate-in zoom-in-90 duration-150 max-w-[calc(100vw-2.5rem)]">
                       {EXTRA_REACTION_EMOJIS.map((emoji) => (
                         <button
                           key={emoji}
                           type="button"
                           onClick={() => handleAddReaction(emoji)}
-                          className="text-xl hover:scale-130 transition-transform p-1 cursor-pointer"
+                          className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-xl hover:scale-125 active:scale-125 hover:bg-gray-100 dark:hover:bg-white/10 transition-transform cursor-pointer touch-manipulation"
                         >
-                          {emoji}
+                          <span>{emoji}</span>
                         </button>
                       ))}
                     </div>
                   )}
                 </div>
 
-                {/* 2. Action Menu Card (Matches screenshot with icons on right) */}
-                <div className="w-64 sm:w-72 mt-3 bg-white dark:bg-[#1e1e22] rounded-2xl shadow-2xl border border-gray-100 dark:border-white/10 overflow-hidden divide-y divide-gray-100 dark:divide-white/5">
+                {/* 2. Action Menu Card */}
+                <div className="w-64 sm:w-72 max-w-[calc(100vw-3rem)] mt-3 bg-white dark:bg-[#1e1e22] rounded-2xl shadow-2xl border border-gray-100 dark:border-white/10 overflow-hidden divide-y divide-gray-100 dark:divide-white/5 shrink-0">
                   {/* Copy Row */}
                   <button
                     type="button"
                     onClick={handleCopyMessage}
-                    className="w-full px-4 py-3 flex items-center justify-between text-sm font-medium text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors"
+                    className="w-full px-4 py-3 flex items-center justify-between text-sm font-medium text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 active:bg-gray-100 dark:active:bg-white/10 cursor-pointer transition-colors touch-manipulation"
                   >
                     <span>Copy</span>
                     <Copy className="w-4 h-4 text-gray-500 dark:text-gray-400 stroke-[2]" />
@@ -1018,7 +1028,7 @@ export default function Messages() {
                   <button
                     type="button"
                     onClick={handleTogglePinMessage}
-                    className="w-full px-4 py-3 flex items-center justify-between text-sm font-medium text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors"
+                    className="w-full px-4 py-3 flex items-center justify-between text-sm font-medium text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 active:bg-gray-100 dark:active:bg-white/10 cursor-pointer transition-colors touch-manipulation"
                   >
                     <span>{selectedMessageForMenu.isPinned ? "Unpin" : "Pin"}</span>
                     <Pin className={`w-4 h-4 stroke-[2] ${selectedMessageForMenu.isPinned ? "text-amber-500 fill-amber-500" : "text-gray-500 dark:text-gray-400"}`} />
@@ -1028,7 +1038,7 @@ export default function Messages() {
                   <button
                     type="button"
                     onClick={handleStartEditMessage}
-                    className="w-full px-4 py-3 flex items-center justify-between text-sm font-medium text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors"
+                    className="w-full px-4 py-3 flex items-center justify-between text-sm font-medium text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 active:bg-gray-100 dark:active:bg-white/10 cursor-pointer transition-colors touch-manipulation"
                   >
                     <span>Edit</span>
                     <Pencil className="w-4 h-4 text-gray-500 dark:text-gray-400 stroke-[2]" />
@@ -1038,7 +1048,7 @@ export default function Messages() {
                   <button
                     type="button"
                     onClick={handleDeleteMessage}
-                    className="w-full px-4 py-3 flex items-center justify-between text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 cursor-pointer transition-colors"
+                    className="w-full px-4 py-3 flex items-center justify-between text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 active:bg-red-100 dark:active:bg-red-950/40 cursor-pointer transition-colors touch-manipulation"
                   >
                     <span>Delete</span>
                     <Trash2 className="w-4 h-4 text-red-500 stroke-[2]" />
