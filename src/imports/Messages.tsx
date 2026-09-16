@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Edit,
   Search,
+  Filter,
   Phone,
   MoreVertical,
   ArrowLeft,
@@ -20,6 +21,10 @@ import {
   X,
   MoreHorizontal,
   Check,
+  MessageSquare,
+  MessageCircle,
+  Bell,
+  Headphones,
 } from "lucide-react";
 import { formatAudioDuration, generateVoiceNoteFallbackBlob } from "../utils/audio";
 import RateRiderModal from "../components/RateRiderModal";
@@ -104,12 +109,21 @@ const WAVEFORM_BAR_HEIGHTS = [
 const REACTION_EMOJIS = ["👍", "🙂", "😊", "😒", "💖", "😄", "🙃", "👌"];
 const EXTRA_REACTION_EMOJIS = ["❤️", "🔥", "🎉", "🙏", "👏", "😂", "😍", "⚡", "🚀", "💯"];
 
+const FILTER_OPTIONS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: "All", label: "All", icon: MessageSquare },
+  { id: "Conversation", label: "Conversation", icon: MessageCircle },
+  { id: "Updates", label: "Updates", icon: Bell },
+  { id: "Supports", label: "Supports", icon: Headphones },
+];
+
 export interface MessagesProps {
   onChatOpenChange?: (isOpen: boolean) => void;
 }
 
 export default function Messages({ onChatOpenChange }: MessagesProps = {}) {
   const [activeTab, setActiveTab] = useState<Tab>("All");
+  const [isFilterOpen, setIsFilterOpen] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [activeChat, setActiveChat] = useState<string | null>(null);
 
   useEffect(() => {
@@ -1084,65 +1098,141 @@ export default function Messages({ onChatOpenChange }: MessagesProps = {}) {
           </button>
         </div>
 
-        {/* Search */}
-        <div className="px-3.5 sm:px-6 my-3 sm:my-4">
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        {/* Search Bar with External Yellow Filter Button */}
+        <div className="px-3.5 sm:px-6 my-3 sm:my-4 flex items-center gap-2.5">
+          {/* Search Component */}
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-gray-400" />
             </div>
             <input
               type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="block w-full pl-10 pr-3 py-3 border border-gray-100 dark:border-white/10 rounded-xl leading-5 bg-gray-50 dark:bg-[#202024] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-yellow-500 sm:text-sm"
               placeholder="Search conversations"
             />
           </div>
+
+          {/* Yellow Filter Button Outside Search Component with Modal */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className="w-11 h-11 flex items-center justify-center rounded-xl bg-yellow-400 hover:bg-yellow-500 text-black shadow-xs transition-transform active:scale-95 cursor-pointer touch-manipulation shrink-0 relative"
+              title="Filter conversations"
+              aria-label="Filter conversations"
+              aria-expanded={isFilterOpen}
+            >
+              <Filter className="w-5 h-5 stroke-[2.2]" />
+              {activeTab !== "All" && (
+                <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-black ring-2 ring-yellow-400" />
+              )}
+            </button>
+
+            {/* Custom Modal Popup (matching Packages screen add button modal) */}
+            {isFilterOpen && (
+              <>
+                {/* Backdrop for closing when clicking outside */}
+                <div 
+                  className="fixed inset-0 z-40 bg-transparent" 
+                  onClick={() => setIsFilterOpen(false)} 
+                />
+
+                {/* Dropdown Action Menu matching Packages screen */}
+                <div className="absolute right-0 top-full mt-2 w-56 sm:w-60 bg-white dark:bg-[#1a1a1e] rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.5)] border border-gray-100 dark:border-white/10 z-50 overflow-hidden divide-y divide-gray-100 dark:divide-white/5 animate-in fade-in zoom-in-95 duration-150">
+                  {FILTER_OPTIONS.map(({ id, label, icon: Icon }) => {
+                    const isSelected = activeTab === id;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => {
+                          setActiveTab(id);
+                          setIsFilterOpen(false);
+                        }}
+                        className="w-full flex items-center justify-between px-4.5 py-3.5 sm:py-4 text-left hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3.5">
+                          <div className={`transition-colors shrink-0 ${
+                            isSelected 
+                              ? "text-yellow-600 dark:text-yellow-400" 
+                              : "text-gray-900 dark:text-gray-100 group-hover:text-yellow-600 dark:group-hover:text-yellow-400"
+                          }`}>
+                            <Icon className="w-5 h-5 stroke-[1.8]" />
+                          </div>
+                          <span className={`text-[15px] tracking-tight ${
+                            isSelected
+                              ? "font-semibold text-yellow-600 dark:text-yellow-400"
+                              : "font-normal sm:font-medium text-gray-800 dark:text-gray-100"
+                          }`}>
+                            {label}
+                          </span>
+                        </div>
+                        {isSelected && (
+                          <Check className="w-4 h-4 text-yellow-500 stroke-[2.5]" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Tabs */}
-        <div className="px-3.5 sm:px-6 mb-4 sm:mb-6 flex gap-2 overflow-x-auto hide-scrollbar">
-          {(["All", "Conversation", "Updates", "Supports"] as Tab[]).map((tab) => (
+        {/* Active filter pill if not All */}
+        {activeTab !== "All" && (
+          <div className="px-3.5 sm:px-6 mb-3 flex items-center gap-2 animate-in fade-in duration-150">
+            <span className="text-xs text-gray-500 dark:text-gray-400">Filtered by:</span>
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors cursor-pointer ${
-                activeTab === tab
-                  ? "bg-yellow-400 text-black font-semibold shadow-xs"
-                  : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5"
-              }`}
+              type="button"
+              onClick={() => setActiveTab("All")}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-yellow-400 text-black shadow-2xs hover:bg-yellow-500 cursor-pointer active:scale-95 transition-all"
+              title="Reset to All"
             >
-              {tab}
+              <span>{activeTab}</span>
+              <X className="w-3 h-3 stroke-[2.5]" />
             </button>
-          ))}
-        </div>
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 px-3.5 sm:px-6 pb-6">
           
-          <h2 className="text-sm font-semibold mb-4 text-gray-500 dark:text-gray-400">Updates</h2>
-          
-          {/* Updates List */}
-          <div
-            onClick={() => setActiveChat("1")}
-            className="bg-white dark:bg-[#1c1c20] border border-gray-100 dark:border-white/5 rounded-2xl p-4 mb-6 flex items-center justify-between cursor-pointer hover:border-gray-200 dark:hover:border-white/10 transition-colors shadow-2xs"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-yellow-400/10 dark:bg-yellow-400/20 text-yellow-600 dark:text-yellow-400 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-xs">
-                <span>DART</span>
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] font-bold bg-yellow-400 text-black px-2 py-0.5 rounded uppercase shadow-2xs">
-                    IN-TRANSIT
-                  </span>
+          {/* Updates section (Visible if activeTab is All or Updates) */}
+          {(activeTab === "All" || activeTab === "Updates") && (
+            <>
+              <h2 className="text-sm font-semibold mb-4 text-gray-500 dark:text-gray-400">Updates</h2>
+              
+              {/* Updates List */}
+              <div
+                onClick={() => setActiveChat("1")}
+                className="bg-white dark:bg-[#1c1c20] border border-gray-100 dark:border-white/5 rounded-2xl p-4 mb-6 flex items-center justify-between cursor-pointer hover:border-gray-200 dark:hover:border-white/10 transition-colors shadow-2xs"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-yellow-400/10 dark:bg-yellow-400/20 text-yellow-600 dark:text-yellow-400 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-xs">
+                    <span>DART</span>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] font-bold bg-yellow-400 text-black px-2 py-0.5 rounded uppercase shadow-2xs">
+                        IN-TRANSIT
+                      </span>
+                    </div>
+                    <h3 className="font-bold text-sm text-gray-900 dark:text-white">Google pixel 9pro</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">CTA 12mins • 1.2km away</p>
+                  </div>
                 </div>
-                <h3 className="font-bold text-sm text-gray-900 dark:text-white">Google pixel 9pro</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400">CTA 12mins • 1.2km away</p>
+                <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500" />
               </div>
-            </div>
-            <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500" />
-          </div>
+            </>
+          )}
 
-          <h2 className="text-sm font-semibold mb-4 text-gray-500 dark:text-gray-400">Conversations</h2>
+          {/* Conversations section (Visible if activeTab is All or Conversation) */}
+          {(activeTab === "All" || activeTab === "Conversation") && (
+            <>
+              <h2 className="text-sm font-semibold mb-4 text-gray-500 dark:text-gray-400">Conversations</h2>
 
           {/* Conversations List */}
           <div className="space-y-2">
@@ -1205,6 +1295,17 @@ export default function Messages({ onChatOpenChange }: MessagesProps = {}) {
               </div>
             </div>
           </div>
+        </>
+      )}
+
+          {/* Supports Section (Visible when activeTab is Supports) */}
+          {activeTab === "Supports" && (
+            <div className="py-16 text-center text-gray-400 dark:text-gray-500">
+              <Headphones className="w-10 h-10 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">No active support conversations</p>
+              <p className="text-xs text-gray-400 mt-1">Contact customer care for help with orders or deliveries</p>
+            </div>
+          )}
 
         </div>
       </div>
